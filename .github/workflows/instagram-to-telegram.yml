@@ -53,7 +53,7 @@ jobs:
         run: python -m pip install -r requirements.txt
 
       - name: Run tests
-        run: pytest -q
+        run: python -m pytest -q
 
   sync:
     if: github.event_name != 'push'
