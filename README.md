@@ -3,7 +3,7 @@
 <p>
   <img src="https://cdn.simpleicons.org/instagram/E4405F" alt="Instagram" height="52" />
   &nbsp;&nbsp;&nbsp;➜&nbsp;&nbsp;&nbsp;
-  <img src="https://cdn.simpleicons.org/apify/97D700" alt="Apify" height="52" />
+  <img src="https://apify.com/img/apify-logo/apify-symbol-200x200.svg" alt="Apify" height="52" />
   &nbsp;&nbsp;&nbsp;➜&nbsp;&nbsp;&nbsp;
   <img src="https://cdn.simpleicons.org/telegram/26A5E4" alt="Telegram" height="52" />
 </p>
@@ -16,7 +16,7 @@ No server to maintain. No Instagram password. Four repository settings for the d
 
 [![CI](https://github.com/Bl0ck154/instagram-to-telegram/actions/workflows/instagram-to-telegram.yml/badge.svg)](https://github.com/Bl0ck154/instagram-to-telegram/actions/workflows/instagram-to-telegram.yml)
 ![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
-![Apify](https://img.shields.io/badge/Instagram-Apify-97D700?logo=apify&logoColor=black)
+![Apify](https://img.shields.io/badge/Apify-Instagram_Scraper-246DFF)
 ![Telegram](https://img.shields.io/badge/Telegram-Bot_API-26A5E4?logo=telegram&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 
@@ -79,7 +79,7 @@ These grant API access, so keep them private.
 <table>
 <tr>
 <td align="center" width="25%"><img src="https://cdn.simpleicons.org/instagram/E4405F" height="34" alt="Instagram"><br><b>Instagram</b><br><sub>Source profile</sub></td>
-<td align="center" width="25%"><img src="https://cdn.simpleicons.org/apify/97D700" height="34" alt="Apify"><br><b>Apify</b><br><sub>Post extraction</sub></td>
+<td align="center" width="25%"><img src="https://apify.com/img/apify-logo/apify-symbol-200x200.svg" height="34" alt="Apify"><br><b>Apify</b><br><sub>Post extraction</sub></td>
 <td align="center" width="25%"><img src="https://cdn.simpleicons.org/github/181717" height="34" alt="GitHub"><br><b>GitHub Actions</b><br><sub>Scheduler & runtime</sub></td>
 <td align="center" width="25%"><img src="https://cdn.simpleicons.org/telegram/26A5E4" height="34" alt="Telegram"><br><b>Telegram</b><br><sub>Bot API delivery</sub></td>
 </tr>
@@ -95,6 +95,21 @@ The default configuration uses:
 - Billing-cycle tracking starting on **day 26** by default.
 
 These operational defaults live in [`config.example.yml`](config.example.yml) and are not credentials.
+
+## ⚡ Lightweight by default
+
+The normal Apify → Telegram deployment does not load the experimental backends at all.
+
+`requirements.txt` contains only the two direct runtime dependencies:
+
+```text
+PyYAML
+requests
+```
+
+The CLI routes the default `apify` backend through a dedicated lightweight runner (`insta_tg_sync/apify_sync.py`). Playwright, Telethon, Instaloader and `curl_cffi` are not installed by the production GitHub Actions job.
+
+That keeps scheduled runs smaller, faster to install, and easier to reason about.
 
 ## 🛡️ Privacy by design
 
@@ -129,7 +144,7 @@ Pushes run the test suite only. Production synchronization runs on the schedule 
 
 ```bash
 python -m venv .venv
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
 ```
 
 Set the same four values as environment variables, then run:
@@ -152,9 +167,21 @@ python -m pytest -q
 
 ## 🧰 Advanced backends
 
-The Python package also contains alternative Instagram/Telegram backends for development and fallback experiments, including `curl_cffi`, Instaloader, Playwright browser mode, and Telethon.
+The repository still contains the older experimental/fallback backends: `curl_cffi`, Instaloader, Playwright browser mode, and Telethon.
 
-They are **not required by the default GitHub Actions deployment**. The public quick-start intentionally stays focused on the simpler Apify + Telegram Bot API path.
+They are **not required by the default GitHub Actions deployment**. If you intentionally want to use them locally, install the optional dependency set:
+
+```bash
+python -m pip install -r requirements-advanced.txt
+```
+
+For Playwright browser mode, install Chromium as well:
+
+```bash
+python -m playwright install chromium
+```
+
+Then select an alternative backend with `--backend`.
 
 ## ❓ FAQ
 
@@ -192,10 +219,14 @@ The default public setup is designed around profiles that the configured Apify a
 .
 ├── .github/workflows/       # CI + scheduled synchronization
 ├── data/state.json          # Privacy-safe duplicate/usage state
-├── insta_tg_sync/           # Application package
+├── insta_tg_sync/
+│   ├── apify_sync.py        # Lightweight default runner
+│   └── sync.py              # Optional/advanced backend runner
 ├── tests/                   # Unit tests
 ├── config.example.yml       # Public default configuration
-└── requirements.txt
+├── requirements.txt         # Minimal production dependencies
+├── requirements-dev.txt     # Test/development dependencies
+└── requirements-advanced.txt# Optional backend dependencies
 ```
 
 ## 🔐 Security
