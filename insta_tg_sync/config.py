@@ -56,6 +56,7 @@ class AppConfig:
     temp_dir: Path = Path("data/tmp")
     debug_dir: Path = Path("data/debug")
     browser_storage_state: Path | None = None
+    browser_timezone: str = "UTC"
     curl_impersonate: str = "chrome120"
     archive_dir: Path | None = None
     request_timeout: int = 25
@@ -124,6 +125,7 @@ def parse_config(raw: dict[str, Any]) -> AppConfig:
         temp_dir=Path(settings.get("temp_dir", "data/tmp")),
         debug_dir=Path(settings.get("debug_dir", "data/debug")),
         browser_storage_state=Path(settings["browser_storage_state"]) if settings.get("browser_storage_state") else None,
+        browser_timezone=str(os.environ.get("BROWSER_TIMEZONE") or settings.get("browser_timezone", "UTC")),
         curl_impersonate=str(settings.get("curl_impersonate", "chrome120")),
         archive_dir=Path(settings["archive_dir"]) if settings.get("archive_dir") else None,
         request_timeout=int(settings.get("request_timeout", 25)),
@@ -139,15 +141,17 @@ def parse_config(raw: dict[str, Any]) -> AppConfig:
 
 def _parse_apify(raw: dict[str, Any]) -> ApifyConfig:
     token = _env_or_value(raw.get("token_env"), raw.get("token"))
-    billing_cycle_start_day = int(raw.get("billing_cycle_start_day", 1))
+    max_results_per_run = int(os.environ.get("APIFY_MAX_RESULTS_PER_RUN") or raw.get("max_results_per_run", 3))
+    monthly_result_cap = int(os.environ.get("APIFY_MONTHLY_RESULT_CAP") or raw.get("monthly_result_cap", 300))
+    billing_cycle_start_day = int(os.environ.get("APIFY_BILLING_CYCLE_START_DAY") or raw.get("billing_cycle_start_day", 1))
     if not 1 <= billing_cycle_start_day <= 28:
         raise ValueError("apify.billing_cycle_start_day must be between 1 and 28.")
     return ApifyConfig(
         token=token,
         actor_id=str(raw.get("actor_id", "apify/instagram-scraper")),
         timeout_seconds=int(raw.get("timeout_seconds", 180)),
-        max_results_per_run=int(raw.get("max_results_per_run", 3)),
-        monthly_result_cap=int(raw.get("monthly_result_cap", 300)),
+        max_results_per_run=max_results_per_run,
+        monthly_result_cap=monthly_result_cap,
         billing_cycle_start_day=billing_cycle_start_day,
     )
 
