@@ -5,7 +5,6 @@ from time import sleep
 import re
 
 import requests
-from telethon import TelegramClient
 
 from .config import TelegramConfig
 
@@ -200,6 +199,14 @@ class TelegramTelethon(TelegramSender):
         asyncio.run(self._send_media(chat_id, caption, files))
 
     async def _send_media(self, chat_id: str, caption: str, files: list[Path]) -> None:
+        try:
+            from telethon import TelegramClient
+        except ModuleNotFoundError as error:
+            raise RuntimeError(
+                "Telethon backend requires optional dependencies. "
+                "Install them with: python -m pip install -r requirements-advanced.txt"
+            ) from error
+
         client = TelegramClient(str(self.session_file), self.api_id, self.api_hash)
         await client.connect()
         try:
