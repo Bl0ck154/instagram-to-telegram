@@ -40,7 +40,7 @@ class BrowserInstagramClient:
                 "viewport": {"width": 1365, "height": 900},
                 "user_agent": self.config.user_agents[-1],
                 "locale": "en-US",
-                "timezone_id": "Europe/Kyiv",
+                "timezone_id": self.config.browser_timezone,
             }
             if self.config.browser_storage_state and self.config.browser_storage_state.exists():
                 context_options["storage_state"] = str(self.config.browser_storage_state)
