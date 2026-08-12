@@ -1,110 +1,213 @@
-# Instagram to Telegram Sync
+<div align="center">
 
-A small GitHub Actions project that checks an Instagram profile every 6 hours and reposts new posts to Telegram.
+<p>
+  <img src="https://cdn.simpleicons.org/instagram/E4405F" alt="Instagram" height="52" />
+  &nbsp;&nbsp;&nbsp;➜&nbsp;&nbsp;&nbsp;
+  <img src="https://cdn.simpleicons.org/apify/97D700" alt="Apify" height="52" />
+  &nbsp;&nbsp;&nbsp;➜&nbsp;&nbsp;&nbsp;
+  <img src="https://cdn.simpleicons.org/telegram/26A5E4" alt="Telegram" height="52" />
+</p>
 
-The default setup intentionally uses only **4 repository values**:
+# Instagram → Telegram
 
-| Type | Name | What it is |
-| --- | --- | --- |
-| Variable | `INSTAGRAM_USERNAME` | Instagram username to monitor |
-| Variable | `TELEGRAM_CHAT_ID` | Telegram channel/chat destination |
-| Secret | `TELEGRAM_BOT_TOKEN` | Telegram bot token from BotFather |
-| Secret | `APIFY_TOKEN` | Apify API token used to read Instagram |
+**Automatically repost new Instagram posts to Telegram with GitHub Actions.**
 
-That is all that is required for the normal GitHub Actions deployment.
+No server to maintain. No Instagram password. Four repository settings for the default deployment.
 
-## Variables vs Secrets
+[![CI](https://github.com/Bl0ck154/instagram-to-telegram/actions/workflows/instagram-to-telegram.yml/badge.svg)](https://github.com/Bl0ck154/instagram-to-telegram/actions/workflows/instagram-to-telegram.yml)
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
+![Apify](https://img.shields.io/badge/Instagram-Apify-97D700?logo=apify&logoColor=black)
+![Telegram](https://img.shields.io/badge/Telegram-Bot_API-26A5E4?logo=telegram&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-blue)
 
-Use a **Variable** for ordinary configuration that is not a credential. In this project the Instagram username and Telegram destination are configuration, so they are Variables.
+</div>
 
-Use a **Secret** only for credentials that would let somebody access an account/API or spend quota. The Telegram bot token and Apify token are therefore Secrets.
+---
 
-## Setup
+## ✨ What it does
 
-Open:
+This project checks one Instagram profile every 6 hours, detects posts that have not been processed yet, downloads their media through Apify, and sends them to a Telegram channel or chat.
 
-**Settings → Secrets and variables → Actions**
+The normal hosted setup runs entirely on **GitHub Actions** and needs only four repository values.
+
+```mermaid
+flowchart LR
+    IG[Instagram profile] --> AP[Apify scraper]
+    AP --> SYNC[Python sync runner]
+    SYNC --> NEW{New post?}
+    NEW -->|Yes| TG[Telegram Bot API]
+    NEW -->|No| STOP[Nothing to send]
+    SYNC <--> STATE[(Hashed state)]
+```
+
+## 🚀 Setup in 5 minutes
+
+Open **Settings → Secrets and variables → Actions** in your repository.
 
 ### Variables
 
-Create:
+These are ordinary configuration values, not credentials.
 
-- `INSTAGRAM_USERNAME` — for example `some_public_profile`
-- `TELEGRAM_CHAT_ID` — for example `@my_channel` or a numeric Telegram chat ID
+| Name | Example | Purpose |
+| --- | --- | --- |
+| `INSTAGRAM_USERNAME` | `some_public_profile` | Instagram profile to monitor |
+| `TELEGRAM_CHAT_ID` | `@my_channel` | Telegram destination |
 
 ### Secrets
 
-Create:
+These grant API access, so keep them private.
 
-- `TELEGRAM_BOT_TOKEN` — token from BotFather
-- `APIFY_TOKEN` — your Apify API token
+| Name | Where to get it | Purpose |
+| --- | --- | --- |
+| `TELEGRAM_BOT_TOKEN` | [@BotFather](https://t.me/BotFather) | Sends posts to Telegram |
+| `APIFY_TOKEN` | Apify Console → Settings → Integrations | Reads Instagram posts through Apify |
 
-No Telegram API ID, API hash, Telethon session, proxy, browser cookie, HMAC key, or extra enable switch is required for the default deployment.
+> **That is the complete default setup.** You do not need Telegram API ID/hash, a Telethon session, browser cookies, proxies, a separate HMAC key, or an enable switch.
 
-The Telegram bot must have permission to post in the destination channel/chat.
+### First run
 
-## First run
+1. Add the two Variables and two Secrets above.
+2. Add your Telegram bot to the destination channel/chat and allow it to post.
+3. Open **Actions → Instagram to Telegram → Run workflow**.
+4. Enable **`initialize_only`** and run it once.
+5. Done — scheduled checks will run every 6 hours.
 
-After adding the 4 values above:
+`initialize_only` records the posts that already exist without sending them, preventing an initial flood of old posts.
 
-1. Open **Actions → Instagram to Telegram → Run workflow**.
-2. Enable `initialize_only`.
-3. Run it once.
+## 🧩 Default stack
 
-This records the currently visible Instagram posts without sending them to Telegram, so old posts are not reposted after deployment.
+<table>
+<tr>
+<td align="center" width="25%"><img src="https://cdn.simpleicons.org/instagram/E4405F" height="34" alt="Instagram"><br><b>Instagram</b><br><sub>Source profile</sub></td>
+<td align="center" width="25%"><img src="https://cdn.simpleicons.org/apify/97D700" height="34" alt="Apify"><br><b>Apify</b><br><sub>Post extraction</sub></td>
+<td align="center" width="25%"><img src="https://cdn.simpleicons.org/github/181717" height="34" alt="GitHub"><br><b>GitHub Actions</b><br><sub>Scheduler & runtime</sub></td>
+<td align="center" width="25%"><img src="https://cdn.simpleicons.org/telegram/26A5E4" height="34" alt="Telegram"><br><b>Telegram</b><br><sub>Bot API delivery</sub></td>
+</tr>
+</table>
 
-After that, the scheduled workflow runs automatically every 6 hours. There is no separate `SYNC_ENABLED` variable.
+The default configuration uses:
 
-You can also use `dry_run` for a manual test that downloads/checks posts without sending them.
+- **Apify Instagram Scraper** as the Instagram backend.
+- **Telegram Bot API** for delivery.
+- A **6-post check window**, which also helps get past pinned posts.
+- A **6-hour GitHub Actions schedule**.
+- A local **Apify safety cap of 1800 results per billing cycle**.
+- Billing-cycle tracking starting on **day 26** by default.
 
-## Default behaviour
+These operational defaults live in [`config.example.yml`](config.example.yml) and are not credentials.
 
-The public deployment uses:
+## 🛡️ Privacy by design
 
-- Instagram source: Apify Instagram Scraper
-- Telegram sender: Telegram Bot API
-- check window: 6 posts
-- initial baseline: 6 posts
-- Apify local safety cap: 1800 results per billing cycle
-- Apify billing cycle start day: 26
-- schedule: every 6 hours
+The repository is intended to stay safe when public.
 
-These operational defaults live in `config.example.yml`; they are not credentials.
+- API credentials live only in **GitHub Secrets**.
+- Instagram username and Telegram destination are runtime **Variables**, not hardcoded into source files.
+- Raw Instagram post shortcodes are not persisted in `data/state.json`; state identifiers are stored as keyed HMAC-SHA256 values.
+- Runtime output redacts configured usernames, Telegram destinations, tokens, proxy URLs, API hashes, and detected Instagram shortcodes.
+- Browser sessions, `.env` files, downloaded media, debug data, and local credentials are excluded by `.gitignore`.
 
-## State
+The default deployment derives the internal state-hashing key from an existing credential, so there is no fifth secret to configure.
 
-`data/state.json` prevents duplicate reposts. Instagram post identifiers are stored as deterministic keyed hashes rather than raw shortcodes. The default deployment derives the internal state key from an existing credential, so there is **no extra state secret to configure**.
+## 🔁 Duplicate protection
 
-The state file may also contain non-sensitive numeric Apify usage counters.
+`data/state.json` tracks which posts have already been handled. A successful scheduled run updates this file through `github-actions[bot]` so the next run knows what it has already seen.
 
-## Local run
+The state file may also contain non-sensitive numeric Apify usage counters used by the local safety cap.
+
+## 🧪 Manual controls
+
+The workflow exposes two useful switches when launched manually:
+
+| Option | Effect |
+| --- | --- |
+| `initialize_only` | Mark currently visible posts as processed without sending them |
+| `dry_run` | Fetch/download/check posts without posting to Telegram |
+
+Pushes run the test suite only. Production synchronization runs on the schedule or through a manual workflow run.
+
+## 💻 Local development
 
 ```bash
+python -m venv .venv
 python -m pip install -r requirements.txt
 ```
 
-Set the same four environment variables locally and run:
+Set the same four values as environment variables, then run:
 
 ```bash
 python -m insta_tg_sync.cli --config config.example.yml
 ```
 
-Useful options:
+Validate configuration without contacting Instagram:
 
 ```bash
-python -m insta_tg_sync.cli --config config.example.yml --dry-run
-python -m insta_tg_sync.cli --config config.example.yml --initialize-only
 python -m insta_tg_sync.cli --config config.example.yml --validate
 ```
 
-## Advanced backends
+Run tests:
 
-The Python package still contains optional Telethon, browser, `curl_cffi`, Instaloader, proxy, and fallback support for developers who want to build a more complex deployment. Those options are intentionally **not part of the default GitHub Actions setup**.
+```bash
+python -m pytest -q
+```
 
-For the normal Instagram → Telegram use case, you do not need a Telethon session or any of those extra credentials.
+## 🧰 Advanced backends
 
-## Public repository safety
+The Python package also contains alternative Instagram/Telegram backends for development and fallback experiments, including `curl_cffi`, Instaloader, Playwright browser mode, and Telethon.
 
-Real API tokens are never committed to the repository. Runtime files such as Telegram sessions, browser storage, proxy files, downloaded media, `.env` files, and debug output are ignored by Git.
+They are **not required by the default GitHub Actions deployment**. The public quick-start intentionally stays focused on the simpler Apify + Telegram Bot API path.
 
-Pushes run the test suite. The production sync runs only for manual workflow executions or the 6-hour schedule once `INSTAGRAM_USERNAME` and `TELEGRAM_CHAT_ID` Variables exist.
+## ❓ FAQ
+
+<details>
+<summary><b>Do I need my Instagram password?</b></summary>
+
+No. The default deployment reads the configured public profile through Apify.
+
+</details>
+
+<details>
+<summary><b>Will it repost all old Instagram posts after installation?</b></summary>
+
+No, if you run the first manual workflow with `initialize_only` enabled. A completely fresh account state also has an initial-baseline safeguard.
+
+</details>
+
+<details>
+<summary><b>Why is my Telegram channel ID not a Secret?</b></summary>
+
+Because it is configuration, not an authentication credential. Knowing a channel username or numeric destination ID does not grant the ability to post there. The bot token is the credential and remains a Secret.
+
+</details>
+
+<details>
+<summary><b>Can I use a private Instagram account?</b></summary>
+
+The default public setup is designed around profiles that the configured Apify actor can access without storing an Instagram login in this repository.
+
+</details>
+
+## 📁 Project structure
+
+```text
+.
+├── .github/workflows/       # CI + scheduled synchronization
+├── data/state.json          # Privacy-safe duplicate/usage state
+├── insta_tg_sync/           # Application package
+├── tests/                   # Unit tests
+├── config.example.yml       # Public default configuration
+└── requirements.txt
+```
+
+## 🔐 Security
+
+Never commit real API tokens, sessions, cookies, proxy credentials, `.env` files, or downloaded private data. See [`SECURITY.md`](SECURITY.md) for reporting security problems.
+
+## 📄 License
+
+Released under the [MIT License](LICENSE).
+
+---
+
+<div align="center">
+<sub>Built for a boring goal: post once on Instagram, get the same post in Telegram automatically.</sub>
+</div>
