@@ -1,156 +1,110 @@
 # Instagram to Telegram Sync
 
-A configurable Python project that monitors one or more public Instagram accounts and forwards new posts to Telegram.
+A small GitHub Actions project that checks an Instagram profile every 6 hours and reposts new posts to Telegram.
 
-The repository is designed to be safe for public hosting: account names, Telegram destinations, API credentials, proxy credentials, browser sessions, and other private runtime values are supplied through environment variables or GitHub Actions secrets instead of being committed to source control.
+The default setup intentionally uses only **4 repository values**:
 
-## Features
+| Type | Name | What it is |
+| --- | --- | --- |
+| Variable | `INSTAGRAM_USERNAME` | Instagram username to monitor |
+| Variable | `TELEGRAM_CHAT_ID` | Telegram channel/chat destination |
+| Secret | `TELEGRAM_BOT_TOKEN` | Telegram bot token from BotFather |
+| Secret | `APIFY_TOKEN` | Apify API token used to read Instagram |
 
-- Multiple Instagram backends: `apify`, `curl_cffi`, `instaloader`, `browser`, and `auto` fallback mode.
-- Telegram Bot API and optional Telethon support.
-- GitHub Actions scheduling and manual runs.
-- Per-account duplicate prevention.
-- Privacy-safe persisted state: account names and Instagram post shortcodes are stored only as keyed HMAC-SHA256 identifiers.
-- Runtime log redaction for configured usernames, chat IDs, tokens, API hashes, proxy URLs, Apify tokens, and detected Instagram shortcodes.
-- Optional proxy support and Playwright browser storage state.
+That is all that is required for the normal GitHub Actions deployment.
 
-## Installation
+## Variables vs Secrets
 
-```bash
-python -m venv .venv
-python -m pip install -r requirements.txt
-```
+Use a **Variable** for ordinary configuration that is not a credential. In this project the Instagram username and Telegram destination are configuration, so they are Variables.
 
-For browser mode, also install Chromium:
+Use a **Secret** only for credentials that would let somebody access an account/API or spend quota. The Telegram bot token and Apify token are therefore Secrets.
 
-```bash
-python -m playwright install chromium
-```
+## Setup
 
-## Configuration
+Open:
 
-`config.example.yml` contains only generic configuration. Private values are referenced by environment-variable name.
+**Settings → Secrets and variables → Actions**
 
-Example account configuration:
+### Variables
 
-```yaml
-accounts:
-  - username_env: INSTAGRAM_USERNAME
-    enabled: true
-    telegram_chat_id_env: TELEGRAM_CHAT_ID
-    check_limit: 6
-    initial_skip: 6
-```
+Create:
 
-For multiple accounts, use different environment variables:
+- `INSTAGRAM_USERNAME` — for example `some_public_profile`
+- `TELEGRAM_CHAT_ID` — for example `@my_channel` or a numeric Telegram chat ID
 
-```yaml
-accounts:
-  - username_env: INSTAGRAM_USERNAME_1
-    telegram_chat_id_env: TELEGRAM_CHAT_ID_1
-  - username_env: INSTAGRAM_USERNAME_2
-    telegram_chat_id_env: TELEGRAM_CHAT_ID_2
-```
+### Secrets
 
-The parser still accepts literal `username` and `telegram_chat_id` fields for local/private configurations, but public repositories should use the `*_env` form.
+Create:
 
-## GitHub Actions secrets
+- `TELEGRAM_BOT_TOKEN` — token from BotFather
+- `APIFY_TOKEN` — your Apify API token
 
-Add private runtime data under **Settings → Secrets and variables → Actions → Secrets**:
+No Telegram API ID, API hash, Telethon session, proxy, browser cookie, HMAC key, or extra enable switch is required for the default deployment.
 
-- `INSTAGRAM_USERNAME` — Instagram account to monitor.
-- `TELEGRAM_CHAT_ID` — Telegram channel/group/user destination.
-- `TELEGRAM_BOT_TOKEN` — Telegram Bot API token when using the bot backend or as Telethon fallback.
-- `TELEGRAM_API_ID` and `TELEGRAM_API_HASH` — required for Telethon.
-- `TELETHON_SESSION_B64` — base64-encoded authorized Telethon session when using Telethon.
-- `APIFY_TOKEN` — required for the Apify backend.
-- `INSTAGRAM_PROXIES` — optional comma- or newline-separated proxy URLs.
-- `IG_BROWSER_STORAGE_STATE` or `IG_BROWSER_STORAGE_STATE_B64` — optional Playwright login state.
-- `STATE_HMAC_KEY` — recommended dedicated random key for hashing persisted identifiers.
+The Telegram bot must have permission to post in the destination channel/chat.
 
-If `STATE_HMAC_KEY` is not set, the state layer falls back to an available Telegram credential as the HMAC key. For a public deployment, a dedicated random `STATE_HMAC_KEY` is preferable.
+## First run
 
-## GitHub Actions variables
+After adding the 4 values above:
 
-Add non-secret deployment settings under **Settings → Secrets and variables → Actions → Variables**:
+1. Open **Actions → Instagram to Telegram → Run workflow**.
+2. Enable `initialize_only`.
+3. Run it once.
 
-- `SYNC_ENABLED` — scheduler safety switch. Set to `true` only after the manual initialization run succeeds.
-- `SYNC_BACKEND` — `apify`, `curl_cffi`, `instaloader`, `browser`, or `auto`.
-- `TELEGRAM_BACKEND` — `bot` or `telethon`.
-- `APIFY_MAX_RESULTS_PER_RUN` — maximum requested results per Apify request window.
-- `APIFY_MONTHLY_RESULT_CAP` — local safety cap for Apify result usage.
-- `APIFY_BILLING_CYCLE_START_DAY` — provider renewal day, from 1 to 28.
-- `BROWSER_TIMEZONE` — Playwright timezone, for example `UTC`.
+This records the currently visible Instagram posts without sending them to Telegram, so old posts are not reposted after deployment.
 
-Except for `SYNC_ENABLED`, these settings have generic defaults. Scheduled production sync stays disabled while `SYNC_ENABLED` is absent or not equal to `true`. Manual workflow runs remain available while the scheduler is disabled, so a new deployment can be initialized safely first.
+After that, the scheduled workflow runs automatically every 6 hours. There is no separate `SYNC_ENABLED` variable.
+
+You can also use `dry_run` for a manual test that downloads/checks posts without sending them.
+
+## Default behaviour
+
+The public deployment uses:
+
+- Instagram source: Apify Instagram Scraper
+- Telegram sender: Telegram Bot API
+- check window: 6 posts
+- initial baseline: 6 posts
+- Apify local safety cap: 1800 results per billing cycle
+- Apify billing cycle start day: 26
+- schedule: every 6 hours
+
+These operational defaults live in `config.example.yml`; they are not credentials.
+
+## State
+
+`data/state.json` prevents duplicate reposts. Instagram post identifiers are stored as deterministic keyed hashes rather than raw shortcodes. The default deployment derives the internal state key from an existing credential, so there is **no extra state secret to configure**.
+
+The state file may also contain non-sensitive numeric Apify usage counters.
 
 ## Local run
 
-Set environment variables using your shell or an ignored `.env` loader of your choice, then run:
+```bash
+python -m pip install -r requirements.txt
+```
+
+Set the same four environment variables locally and run:
 
 ```bash
 python -m insta_tg_sync.cli --config config.example.yml
 ```
 
-Validate configuration without contacting Instagram:
-
-```bash
-python -m insta_tg_sync.cli --config config.example.yml --validate
-```
-
-Download/check without sending to Telegram:
+Useful options:
 
 ```bash
 python -m insta_tg_sync.cli --config config.example.yml --dry-run
-```
-
-Initialize/re-baseline the current fetch window without sending old posts:
-
-```bash
 python -m insta_tg_sync.cli --config config.example.yml --initialize-only
+python -m insta_tg_sync.cli --config config.example.yml --validate
 ```
 
-## Backends
+## Advanced backends
 
-- `apify`: hosted scraper path suitable for environments where Instagram blocks datacenter IPs.
-- `curl_cffi`: no-login web request path with browser TLS impersonation.
-- `instaloader`: simple direct Instagram access; may be rate-limited on shared/datacenter IPs.
-- `browser`: Playwright Chromium extraction.
-- `auto`: tries Apify, then curl_cffi, Instaloader, and browser.
+The Python package still contains optional Telethon, browser, `curl_cffi`, Instaloader, proxy, and fallback support for developers who want to build a more complex deployment. Those options are intentionally **not part of the default GitHub Actions setup**.
 
-Override the configured backend with:
+For the normal Instagram → Telegram use case, you do not need a Telethon session or any of those extra credentials.
 
-```bash
-python -m insta_tg_sync.cli --config config.example.yml --backend auto
-```
+## Public repository safety
 
-## Privacy-safe state
+Real API tokens are never committed to the repository. Runtime files such as Telegram sessions, browser storage, proxy files, downloaded media, `.env` files, and debug output are ignored by Git.
 
-The workflow persists `data/state.json` so scheduled runs do not repost the same Instagram content. The state file does **not** store configured Instagram usernames or raw post shortcodes. They are converted to keyed HMAC-SHA256 identifiers before being written.
-
-Provider usage counters can remain as ordinary numeric metadata because they do not contain account credentials or destination identifiers.
-
-Changing `STATE_HMAC_KEY` invalidates existing hashed identifiers. The next run will behave like a new state baseline for the configured account.
-
-On a fresh deployment, use the manual `initialize_only` workflow option for the first run to baseline currently visible posts without sending anything. The sync also protects a completely new account state by treating the initial fetch window as already processed.
-
-## Logging and debug data
-
-The CLI installs an output redaction layer before synchronization begins. Configured usernames, Telegram destinations, credentials, proxy URLs, provider tokens, and detected Instagram shortcodes are replaced in stdout/stderr.
-
-Browser storage state, Telethon sessions, local proxy files, debug snapshots, downloaded media, `.env` files, and logs are excluded by `.gitignore` and must never be committed.
-
-The public GitHub Actions workflow intentionally does not upload browser debug snapshots on failure because those artifacts can contain profile-specific content.
-
-## GitHub Actions
-
-Pushes run tests only. Manual runs are always allowed. Scheduled production runs require `SYNC_ENABLED=true`; the schedule checks every six hours. Successful sync runs can persist the privacy-safe hashed state back to the repository using the built-in `github-actions[bot]` identity.
-
-For a safe cutover: configure Secrets and the operational Variables first, leave `SYNC_ENABLED` unset/false, run the workflow manually with `initialize_only=true`, verify the run, then set `SYNC_ENABLED=true` for scheduled operation. Disable the old deployment only after the new one has completed a successful real check.
-
-## Security checklist before publishing a fork
-
-- Keep all real account names and destination IDs in GitHub Secrets or local environment variables.
-- Never commit `.session`, browser storage state, proxy credential files, `.env`, downloaded media, or debug artifacts.
-- Keep account-specific operational settings in Repository Variables rather than source code.
-- Start a new public repository from a sanitized snapshot rather than publishing an older private repository whose Git history may contain personal metadata.
+Pushes run the test suite. The production sync runs only for manual workflow executions or the 6-hour schedule once `INSTAGRAM_USERNAME` and `TELEGRAM_CHAT_ID` Variables exist.
