@@ -116,12 +116,16 @@ jobs:
           INSTAGRAM_USERNAME: ${{ secrets.INSTAGRAM_USERNAME }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_BACKEND: ${{ secrets.TELEGRAM_BACKEND }}
+          TELEGRAM_BACKEND: ${{ vars.TELEGRAM_BACKEND || 'bot' }}
           TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
           TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
           INSTAGRAM_PROXIES: ${{ secrets.INSTAGRAM_PROXIES }}
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
           STATE_HMAC_KEY: ${{ secrets.STATE_HMAC_KEY }}
+          APIFY_MAX_RESULTS_PER_RUN: ${{ vars.APIFY_MAX_RESULTS_PER_RUN }}
+          APIFY_MONTHLY_RESULT_CAP: ${{ vars.APIFY_MONTHLY_RESULT_CAP }}
+          APIFY_BILLING_CYCLE_START_DAY: ${{ vars.APIFY_BILLING_CYCLE_START_DAY }}
+          BROWSER_TIMEZONE: ${{ vars.BROWSER_TIMEZONE }}
         run: |
           args="--config config.example.yml --backend ${{ steps.settings.outputs.backend }}"
           if [ "${{ steps.settings.outputs.dry_run }}" = "true" ]; then
