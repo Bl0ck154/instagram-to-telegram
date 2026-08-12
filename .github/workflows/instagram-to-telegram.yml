@@ -57,7 +57,7 @@ jobs:
         run: python -m pytest -q
 
   sync:
-    if: github.event_name != 'push' && vars.SYNC_ENABLED == 'true'
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && vars.SYNC_ENABLED == 'true')
     permissions:
       contents: write
     runs-on: ubuntu-latest
