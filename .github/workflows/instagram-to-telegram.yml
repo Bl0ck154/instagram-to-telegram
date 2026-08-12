@@ -4,24 +4,13 @@ on:
   push:
   workflow_dispatch:
     inputs:
-      backend:
-        description: "Sync backend"
-        required: false
-        default: "apify"
-        type: choice
-        options:
-          - instaloader
-          - curl_cffi
-          - apify
-          - browser
-          - auto
       dry_run:
         description: "Run without posting to Telegram"
         required: false
         default: false
         type: boolean
       initialize_only:
-        description: "Mark fetched posts processed without posting"
+        description: "Mark current posts as processed without posting"
         required: false
         default: false
         type: boolean
@@ -57,7 +46,7 @@ jobs:
         run: python -m pytest -q
 
   sync:
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && vars.SYNC_ENABLED == 'true')
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && vars.INSTAGRAM_USERNAME != '' && vars.TELEGRAM_CHAT_ID != '')
     permissions:
       contents: write
     runs-on: ubuntu-latest
@@ -76,70 +65,26 @@ jobs:
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
 
-      - name: Resolve run settings
-        id: settings
-        shell: bash
-        run: |
-          backend="${{ github.event.inputs.backend || vars.SYNC_BACKEND || 'apify' }}"
-          dry_run="${{ github.event.inputs.dry_run || 'false' }}"
-          initialize_only="${{ github.event.inputs.initialize_only || 'false' }}"
-          echo "backend=$backend" >> "$GITHUB_OUTPUT"
-          echo "dry_run=$dry_run" >> "$GITHUB_OUTPUT"
-          echo "initialize_only=$initialize_only" >> "$GITHUB_OUTPUT"
-
-      - name: Install browser runtime
-        if: steps.settings.outputs.backend == 'browser' || steps.settings.outputs.backend == 'auto'
-        run: python -m playwright install --with-deps chromium
-
-      - name: Restore browser storage state
-        if: steps.settings.outputs.backend == 'browser' || steps.settings.outputs.backend == 'auto'
-        env:
-          IG_BROWSER_STORAGE_STATE: ${{ secrets.IG_BROWSER_STORAGE_STATE }}
-          IG_BROWSER_STORAGE_STATE_B64: ${{ secrets.IG_BROWSER_STORAGE_STATE_B64 }}
-        run: |
-          if [ -n "$IG_BROWSER_STORAGE_STATE_B64" ]; then
-            mkdir -p data
-            printf '%s' "$IG_BROWSER_STORAGE_STATE_B64" | base64 -d > data/browser-storage-state.json
-          elif [ -n "$IG_BROWSER_STORAGE_STATE" ]; then
-            mkdir -p data
-            printf '%s' "$IG_BROWSER_STORAGE_STATE" > data/browser-storage-state.json
-          fi
-
-      - name: Restore Telegram session
-        env:
-          TELETHON_SESSION_B64: ${{ secrets.TELETHON_SESSION_B64 }}
-        run: |
-          if [ -n "$TELETHON_SESSION_B64" ]; then
-            mkdir -p data
-            printf '%s' "$TELETHON_SESSION_B64" | base64 -d > data/telegram.session
-          fi
-
       - name: Run sync
         env:
-          INSTAGRAM_USERNAME: ${{ secrets.INSTAGRAM_USERNAME }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          # Public configuration: Settings -> Secrets and variables -> Actions -> Variables
+          INSTAGRAM_USERNAME: ${{ vars.INSTAGRAM_USERNAME }}
+          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
+
+          # Private credentials: Settings -> Secrets and variables -> Actions -> Secrets
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_BACKEND: ${{ vars.TELEGRAM_BACKEND || 'bot' }}
-          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
-          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
-          INSTAGRAM_PROXIES: ${{ secrets.INSTAGRAM_PROXIES }}
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
-          STATE_HMAC_KEY: ${{ secrets.STATE_HMAC_KEY }}
-          APIFY_MAX_RESULTS_PER_RUN: ${{ vars.APIFY_MAX_RESULTS_PER_RUN }}
-          APIFY_MONTHLY_RESULT_CAP: ${{ vars.APIFY_MONTHLY_RESULT_CAP }}
-          APIFY_BILLING_CYCLE_START_DAY: ${{ vars.APIFY_BILLING_CYCLE_START_DAY }}
-          BROWSER_TIMEZONE: ${{ vars.BROWSER_TIMEZONE }}
         run: |
-          args="--config config.example.yml --backend ${{ steps.settings.outputs.backend }}"
-          if [ "${{ steps.settings.outputs.dry_run }}" = "true" ]; then
+          args="--config config.example.yml"
+          if [ "${{ github.event.inputs.dry_run || 'false' }}" = "true" ]; then
             args="$args --dry-run"
           fi
-          if [ "${{ steps.settings.outputs.initialize_only }}" = "true" ]; then
+          if [ "${{ github.event.inputs.initialize_only || 'false' }}" = "true" ]; then
             args="$args --initialize-only"
           fi
           python -m insta_tg_sync.cli $args
 
-      - name: Persist privacy-safe state
+      - name: Persist state
         if: always()
         run: |
           if [ -n "$(git status --porcelain data/state.json 2>/dev/null)" ]; then
