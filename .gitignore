@@ -1,0 +1,30 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Runtime data and private credentials
+data/*
+!data/.gitkeep
+!data/state.json
+data/debug/
+data/browser-storage-state.json
+data/telegram.session
+*.session
+*.session-journal
+.env
+.env.*
+auth.json
+login.py
+proxies.txt
+*.log
+
+# Downloaded Instagram media
+temp_monitor_post/
+
+# Editor/OS files
+nppBackup/
+*.lnk
+.DS_Store
+Thumbs.db
