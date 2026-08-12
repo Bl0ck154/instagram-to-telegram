@@ -56,19 +56,32 @@ The parser still accepts literal `username` and `telegram_chat_id` fields for lo
 
 ## GitHub Actions secrets
 
-The included workflow expects these secrets as needed:
+Add private runtime data under **Settings → Secrets and variables → Actions → Secrets**:
 
 - `INSTAGRAM_USERNAME` — Instagram account to monitor.
 - `TELEGRAM_CHAT_ID` — Telegram channel/group/user destination.
-- `TELEGRAM_BOT_TOKEN` — Telegram Bot API token when using the bot backend.
+- `TELEGRAM_BOT_TOKEN` — Telegram Bot API token when using the bot backend or as Telethon fallback.
 - `TELEGRAM_API_ID` and `TELEGRAM_API_HASH` — required for Telethon.
-- `TELETHON_SESSION_B64` — optional base64 Telethon session.
+- `TELETHON_SESSION_B64` — base64-encoded authorized Telethon session when using Telethon.
 - `APIFY_TOKEN` — required for the Apify backend.
 - `INSTAGRAM_PROXIES` — optional comma- or newline-separated proxy URLs.
 - `IG_BROWSER_STORAGE_STATE` or `IG_BROWSER_STORAGE_STATE_B64` — optional Playwright login state.
 - `STATE_HMAC_KEY` — recommended dedicated random key for hashing persisted identifiers.
 
 If `STATE_HMAC_KEY` is not set, the state layer falls back to an available Telegram credential as the HMAC key. For a public deployment, a dedicated random `STATE_HMAC_KEY` is preferable.
+
+## GitHub Actions variables
+
+Add non-secret deployment settings under **Settings → Secrets and variables → Actions → Variables**. All are optional because generic defaults exist:
+
+- `SYNC_BACKEND` — `apify`, `curl_cffi`, `instaloader`, `browser`, or `auto`.
+- `TELEGRAM_BACKEND` — `bot` or `telethon`.
+- `APIFY_MAX_RESULTS_PER_RUN` — maximum requested results per Apify request window.
+- `APIFY_MONTHLY_RESULT_CAP` — local safety cap for Apify result usage.
+- `APIFY_BILLING_CYCLE_START_DAY` — provider renewal day, from 1 to 28.
+- `BROWSER_TIMEZONE` — Playwright timezone, for example `UTC`.
+
+These values are deliberately not hardcoded so the same public repository can be deployed by different users without exposing account-specific settings.
 
 ## Local run
 
@@ -118,6 +131,8 @@ Provider usage counters can remain as ordinary numeric metadata because they do 
 
 Changing `STATE_HMAC_KEY` invalidates existing hashed identifiers. The next run will behave like a new state baseline for the configured account.
 
+On a fresh deployment, use the manual `initialize_only` workflow option for the first run if you want to explicitly baseline currently visible posts without sending anything. The sync also protects a completely new account state by treating the initial fetch window as already processed.
+
 ## Logging and debug data
 
 The CLI installs an output redaction layer before synchronization begins. Configured usernames, Telegram destinations, credentials, proxy URLs, provider tokens, and detected Instagram shortcodes are replaced in stdout/stderr.
@@ -128,13 +143,11 @@ The public GitHub Actions workflow intentionally does not upload browser debug s
 
 ## GitHub Actions
 
-The included workflow runs every six hours by default and also supports manual execution. It can persist the privacy-safe hashed state back to the repository using the built-in `github-actions[bot]` identity.
-
-Repository variables can be used for non-sensitive settings such as `SYNC_BACKEND`. Use GitHub Secrets for private values.
+The included workflow runs every six hours by default and also supports manual execution. Pushes run tests only; they do not run the production sync. Scheduled/manual sync runs can persist the privacy-safe hashed state back to the repository using the built-in `github-actions[bot]` identity.
 
 ## Security checklist before publishing a fork
 
 - Keep all real account names and destination IDs in GitHub Secrets or local environment variables.
 - Never commit `.session`, browser storage state, proxy credential files, `.env`, downloaded media, or debug artifacts.
+- Keep account-specific operational settings in Repository Variables rather than source code.
 - Start a new public repository from a sanitized snapshot rather than publishing an older private repository whose Git history may contain personal metadata.
-- Review commit author email settings before creating the first public commit.
