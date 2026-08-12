@@ -29,9 +29,10 @@ apify:
   token_env: APIFY_TOKEN
   actor_id: apify/instagram-scraper
   timeout_seconds: 180
+  # These generic defaults can be overridden by APIFY_* environment variables
+  # or GitHub Repository Variables without changing public source code.
   max_results_per_run: 6
   monthly_result_cap: 1800
-  # Set this to the renewal day of your own provider account.
   billing_cycle_start_day: 1
 
 settings:
@@ -41,6 +42,7 @@ settings:
   temp_dir: data/tmp
   debug_dir: data/debug
   browser_storage_state: data/browser-storage-state.json
+  browser_timezone: UTC
   curl_impersonate: chrome120
   request_timeout: 25
   max_connection_attempts: 1
