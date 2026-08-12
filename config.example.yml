@@ -1,16 +1,11 @@
 telegram:
-  # bot: Telegram Bot API. telethon: saved user session.
   backend: bot
   bot_token_env: TELEGRAM_BOT_TOKEN
-  api_id_env: TELEGRAM_API_ID
-  api_hash_env: TELEGRAM_API_HASH
-  session_file: data/telegram.session
 
 accounts:
   - username_env: INSTAGRAM_USERNAME
-    enabled: true
     telegram_chat_id_env: TELEGRAM_CHAT_ID
-    # Scan enough posts to get past up to 3 pinned posts.
+    enabled: true
     check_limit: 6
     initial_skip: 6
     caption_template: |
@@ -18,35 +13,18 @@ accounts:
 
       Link: {url}
 
-proxy:
-  try_direct: false
-  shuffle: true
-  urls_env: INSTAGRAM_PROXIES
-  # Optional local file. Supports full proxy URLs or host:port:user:password rows.
-  # file: proxies.txt
-
 apify:
   token_env: APIFY_TOKEN
   actor_id: apify/instagram-scraper
   timeout_seconds: 180
-  # These generic defaults can be overridden by APIFY_* environment variables
-  # or GitHub Repository Variables without changing public source code.
   max_results_per_run: 6
   monthly_result_cap: 1800
-  billing_cycle_start_day: 1
+  billing_cycle_start_day: 26
 
 settings:
-  # auto tries apify, curl_cffi, instaloader, then browser.
   backend: apify
   state_file: data/state.json
   temp_dir: data/tmp
-  debug_dir: data/debug
-  browser_storage_state: data/browser-storage-state.json
-  browser_timezone: UTC
-  curl_impersonate: chrome120
   request_timeout: 25
-  max_connection_attempts: 1
   post_delay_seconds: 4
-  connection_retry_min_seconds: 3
-  connection_retry_max_seconds: 8
   dry_run: false
