@@ -50,6 +50,26 @@ def test_parse_config_reads_username_from_environment(monkeypatch):
     assert config.accounts[0].telegram_chat_id == "@private_chat"
 
 
+def test_parse_config_accepts_instagram_username_with_at_sign(monkeypatch):
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "token")
+    monkeypatch.setenv("INSTAGRAM_USERNAME", "  @private_account  ")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "@private_chat")
+
+    config = parse_config(
+        {
+            "telegram": {"bot_token_env": "TELEGRAM_BOT_TOKEN"},
+            "accounts": [
+                {
+                    "username_env": "INSTAGRAM_USERNAME",
+                    "telegram_chat_id_env": "TELEGRAM_CHAT_ID",
+                }
+            ],
+        }
+    )
+
+    assert config.accounts[0].username == "private_account"
+
+
 def test_parse_config_ignores_disabled_accounts(monkeypatch):
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "token")
     monkeypatch.setenv("CHAT", "@chat")
