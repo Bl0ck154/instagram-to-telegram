@@ -181,7 +181,7 @@ def _parse_telegram(raw: dict[str, Any]) -> TelegramConfig:
 
 
 def _parse_account(raw: dict[str, Any]) -> AccountConfig:
-    username = _env_or_value(raw.get("username_env"), raw.get("username")).strip()
+    username = _normalize_instagram_username(_env_or_value(raw.get("username_env"), raw.get("username")))
     if not username:
         env_name = raw.get("username_env")
         hint = f" Set environment variable {env_name}." if env_name else ""
@@ -201,6 +201,10 @@ def _parse_account(raw: dict[str, Any]) -> AccountConfig:
         initial_skip=int(raw.get("initial_skip", 12)),
         caption_template=str(raw.get("caption_template", "{caption}\n\nLink: {url}")),
     )
+
+
+def _normalize_instagram_username(value: str) -> str:
+    return value.strip().lstrip("@").strip()
 
 
 def _env_or_value(env_name: str | None, value: Any) -> str:
