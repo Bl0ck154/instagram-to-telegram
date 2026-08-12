@@ -119,3 +119,30 @@ def test_parse_config_supports_apify_billing_cycle_start_day(monkeypatch):
     )
 
     assert config.apify.billing_cycle_start_day == 26
+
+
+def test_parse_config_supports_public_runtime_variables(monkeypatch):
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "token")
+    monkeypatch.setenv("CHAT", "@chat")
+    monkeypatch.setenv("APIFY_MAX_RESULTS_PER_RUN", "5")
+    monkeypatch.setenv("APIFY_MONTHLY_RESULT_CAP", "1234")
+    monkeypatch.setenv("APIFY_BILLING_CYCLE_START_DAY", "17")
+    monkeypatch.setenv("BROWSER_TIMEZONE", "Europe/Berlin")
+
+    config = parse_config(
+        {
+            "telegram": {"bot_token_env": "TELEGRAM_BOT_TOKEN"},
+            "accounts": [{"username": "account", "telegram_chat_id_env": "CHAT"}],
+            "apify": {
+                "max_results_per_run": 3,
+                "monthly_result_cap": 300,
+                "billing_cycle_start_day": 1,
+            },
+            "settings": {"browser_timezone": "UTC"},
+        }
+    )
+
+    assert config.apify.max_results_per_run == 5
+    assert config.apify.monthly_result_cap == 1234
+    assert config.apify.billing_cycle_start_day == 17
+    assert config.browser_timezone == "Europe/Berlin"
