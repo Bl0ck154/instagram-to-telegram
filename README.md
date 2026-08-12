@@ -72,8 +72,9 @@ If `STATE_HMAC_KEY` is not set, the state layer falls back to an available Teleg
 
 ## GitHub Actions variables
 
-Add non-secret deployment settings under **Settings → Secrets and variables → Actions → Variables**. All are optional because generic defaults exist:
+Add non-secret deployment settings under **Settings → Secrets and variables → Actions → Variables**:
 
+- `SYNC_ENABLED` — production safety switch. Set to `true` only after all required secrets are configured and the initial baseline run is complete.
 - `SYNC_BACKEND` — `apify`, `curl_cffi`, `instaloader`, `browser`, or `auto`.
 - `TELEGRAM_BACKEND` — `bot` or `telethon`.
 - `APIFY_MAX_RESULTS_PER_RUN` — maximum requested results per Apify request window.
@@ -81,7 +82,7 @@ Add non-secret deployment settings under **Settings → Secrets and variables �
 - `APIFY_BILLING_CYCLE_START_DAY` — provider renewal day, from 1 to 28.
 - `BROWSER_TIMEZONE` — Playwright timezone, for example `UTC`.
 
-These values are deliberately not hardcoded so the same public repository can be deployed by different users without exposing account-specific settings.
+Except for `SYNC_ENABLED`, these settings have generic defaults. The production sync stays disabled while `SYNC_ENABLED` is absent or not equal to `true`.
 
 ## Local run
 
@@ -143,7 +144,9 @@ The public GitHub Actions workflow intentionally does not upload browser debug s
 
 ## GitHub Actions
 
-The included workflow runs every six hours by default and also supports manual execution. Pushes run tests only; they do not run the production sync. Scheduled/manual sync runs can persist the privacy-safe hashed state back to the repository using the built-in `github-actions[bot]` identity.
+Pushes run tests only. Scheduled and manual production runs are gated by `SYNC_ENABLED=true`. The schedule checks every six hours. Successful sync runs can persist the privacy-safe hashed state back to the repository using the built-in `github-actions[bot]` identity.
+
+For a safe cutover: configure Secrets and Variables first, temporarily set `SYNC_ENABLED=true`, run the workflow manually with `initialize_only=true`, verify the run, then leave `SYNC_ENABLED=true` for scheduled operation. Disable the old deployment only after the new one has completed a successful real check.
 
 ## Security checklist before publishing a fork
 
