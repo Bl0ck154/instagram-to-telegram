@@ -74,7 +74,7 @@ If `STATE_HMAC_KEY` is not set, the state layer falls back to an available Teleg
 
 Add non-secret deployment settings under **Settings → Secrets and variables → Actions → Variables**:
 
-- `SYNC_ENABLED` — production safety switch. Set to `true` only after all required secrets are configured and the initial baseline run is complete.
+- `SYNC_ENABLED` — scheduler safety switch. Set to `true` only after the manual initialization run succeeds.
 - `SYNC_BACKEND` — `apify`, `curl_cffi`, `instaloader`, `browser`, or `auto`.
 - `TELEGRAM_BACKEND` — `bot` or `telethon`.
 - `APIFY_MAX_RESULTS_PER_RUN` — maximum requested results per Apify request window.
@@ -82,7 +82,7 @@ Add non-secret deployment settings under **Settings → Secrets and variables �
 - `APIFY_BILLING_CYCLE_START_DAY` — provider renewal day, from 1 to 28.
 - `BROWSER_TIMEZONE` — Playwright timezone, for example `UTC`.
 
-Except for `SYNC_ENABLED`, these settings have generic defaults. The production sync stays disabled while `SYNC_ENABLED` is absent or not equal to `true`.
+Except for `SYNC_ENABLED`, these settings have generic defaults. Scheduled production sync stays disabled while `SYNC_ENABLED` is absent or not equal to `true`. Manual workflow runs remain available while the scheduler is disabled, so a new deployment can be initialized safely first.
 
 ## Local run
 
@@ -132,7 +132,7 @@ Provider usage counters can remain as ordinary numeric metadata because they do 
 
 Changing `STATE_HMAC_KEY` invalidates existing hashed identifiers. The next run will behave like a new state baseline for the configured account.
 
-On a fresh deployment, use the manual `initialize_only` workflow option for the first run if you want to explicitly baseline currently visible posts without sending anything. The sync also protects a completely new account state by treating the initial fetch window as already processed.
+On a fresh deployment, use the manual `initialize_only` workflow option for the first run to baseline currently visible posts without sending anything. The sync also protects a completely new account state by treating the initial fetch window as already processed.
 
 ## Logging and debug data
 
@@ -144,9 +144,9 @@ The public GitHub Actions workflow intentionally does not upload browser debug s
 
 ## GitHub Actions
 
-Pushes run tests only. Scheduled and manual production runs are gated by `SYNC_ENABLED=true`. The schedule checks every six hours. Successful sync runs can persist the privacy-safe hashed state back to the repository using the built-in `github-actions[bot]` identity.
+Pushes run tests only. Manual runs are always allowed. Scheduled production runs require `SYNC_ENABLED=true`; the schedule checks every six hours. Successful sync runs can persist the privacy-safe hashed state back to the repository using the built-in `github-actions[bot]` identity.
 
-For a safe cutover: configure Secrets and Variables first, temporarily set `SYNC_ENABLED=true`, run the workflow manually with `initialize_only=true`, verify the run, then leave `SYNC_ENABLED=true` for scheduled operation. Disable the old deployment only after the new one has completed a successful real check.
+For a safe cutover: configure Secrets and the operational Variables first, leave `SYNC_ENABLED` unset/false, run the workflow manually with `initialize_only=true`, verify the run, then set `SYNC_ENABLED=true` for scheduled operation. Disable the old deployment only after the new one has completed a successful real check.
 
 ## Security checklist before publishing a fork
 
