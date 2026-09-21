@@ -13,7 +13,8 @@
         "hmac-sha256:feb246f55047d14bf4d95ae971ec39324871dc0671bea3c84d445c616beb3375",
         "hmac-sha256:dcb0067fda3de30b29637cf57bd792ff239d2c0acb2c8301363a9aed4a925a17",
         "hmac-sha256:c3cf3a491e30e7c6430c1d9334e9e08c21c49b5e53b630ff7c3bea0a949da778",
-        "hmac-sha256:1dd968b8af4589ce476c4fda73eac573996067c52d72cf852eb653bfb64197e0"
+        "hmac-sha256:1dd968b8af4589ce476c4fda73eac573996067c52d72cf852eb653bfb64197e0",
+        "hmac-sha256:7492d9c1909380574601e3dc6eebd5930976c604368a5b013cb5e44a2956dd7f"
       ]
     }
   },
@@ -22,7 +23,7 @@
       "apify": 1612
     },
     "2026-08-26": {
-      "apify": 1313
+      "apify": 1326
     }
   }
 }
