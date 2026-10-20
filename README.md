@@ -90,6 +90,7 @@ The default configuration uses:
 - **Apify Instagram Scraper** as the Instagram backend.
 - **Telegram Bot API** for delivery.
 - A **6-post check window**, which also helps get past pinned posts.
+- A **48-hour publication-time guard** (configurable with `apify.max_post_age_hours` or `APIFY_MAX_POST_AGE_HOURS`). Stale posts, future-dated items and posts without a trustworthy Instagram publication timestamp are suppressed rather than backfilled if Apify returns older Reels after a partial failure.
 - A **6-hour GitHub Actions schedule**.
 - A local **Apify safety cap of 1800 results per billing cycle**.
 - Billing-cycle tracking starting on **day 26** by default.
@@ -125,7 +126,7 @@ The default deployment derives the internal state-hashing key from an existing c
 
 ## 🔁 Duplicate protection
 
-`data/state.json` tracks which posts have already been handled. A successful scheduled run updates this file through `github-actions[bot]` so the next run knows what it has already seen.
+`data/state.json` tracks which posts have already been handled (including old/undated items suppressed by the freshness guard). A successful scheduled run updates this file through `github-actions[bot]` so the next run knows what it has already seen.
 
 The state file may also contain non-sensitive numeric Apify usage counters used by the local safety cap.
 
