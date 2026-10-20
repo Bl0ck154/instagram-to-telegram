@@ -1,4 +1,5 @@
 from dataclasses import replace
+from datetime import datetime, timedelta, timezone
 
 from insta_tg_sync.apify_provider import ApifyPost
 from insta_tg_sync.apify_sync import ApifySyncRunner
@@ -107,3 +108,49 @@ def test_initialize_only_marks_all_fetched_apify_posts_without_sending(tmp_path)
     assert "CURRENT" in processed
     assert "OLDER" in processed
     assert runner.telegram.sent == []
+
+
+def test_apify_stale_reels_and_missing_timestamps_never_repost(tmp_path, monkeypatch):
+    media = tmp_path / "media.jpg"
+    media.write_bytes(b"image")
+    monkeypatch.setattr("insta_tg_sync.apify_sync.download_apify_media", lambda *args: [media])
+
+    runner = ApifySyncRunner(_config(tmp_path))
+    runner.telegram = FakeTelegram()
+    runner.state.load()
+    runner.state.mark_processed("account", "ALREADY")
+    now = datetime.now(timezone.utc)
+
+    # Reproduces the incident: old Reels suddenly replace the normal posts feed.
+    posts = [
+        replace(_post("OLD_PINNED"), published_at=now - timedelta(days=120)),
+        replace(_post("OLD_REEL"), published_at=now - timedelta(days=6)),
+        _post("UNDATED_REEL"),
+        replace(_post("FUTURE_REEL"), published_at=now + timedelta(days=1)),
+        replace(_post("RECENT_REEL"), published_at=now - timedelta(hours=2)),
+    ]
+    runner._sync_posts(_account(), posts)
+
+    assert len(runner.telegram.sent) == 1
+    assert "RECENT_REEL" in runner.telegram.sent[0][1]
+    for post in posts:
+        assert post.shortcode in runner.state.processed("account")
+
+    runner._sync_posts(_account(), list(reversed(posts)))
+    assert len(runner.telegram.sent) == 1  # no resurrection after reordering
+
+
+def test_apify_dry_run_does_not_persist_suppressed_posts(tmp_path):
+    runner = ApifySyncRunner(_config(tmp_path, dry_run=True))
+    runner.telegram = FakeTelegram()
+    runner.state.load()
+    runner.state.mark_processed("account", "ALREADY")
+
+    runner._sync_posts(_account(), [
+        replace(_post("STALE"), published_at=datetime.now(timezone.utc) - timedelta(days=90)),
+        _post("UNDATED"),
+    ])
+
+    assert runner.telegram.sent == []
+    assert "STALE" not in runner.state.processed("account")
+    assert "UNDATED" not in runner.state.processed("account")
