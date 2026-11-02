@@ -28,6 +28,14 @@
       ]
     }
   },
+  "stats": {
+    "2026-11-02": {
+      "checks": 1,
+      "estimated_apify_results": 12,
+      "fetched": 6,
+      "skipped": 0
+    }
+  },
   "usage": {
     "2026-07-26": {
       "apify": 1612
@@ -39,7 +47,7 @@
       "apify": 1443
     },
     "2026-10-26": {
-      "apify": 364
+      "apify": 376
     }
   }
 }
