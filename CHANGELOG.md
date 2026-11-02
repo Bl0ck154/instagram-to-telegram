@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Deliver 11–20 image/video carousel items across multiple Telegram albums rather than silently dropping the extras; quarantine partial deliveries for manual review.
+
 - Preserve long captions in Telegram text messages instead of truncating.
 - Stream and validate downloaded media by actual file signature and MIME type.
 - Quarantine uncertain Telegram deliveries rather than risking duplicate retries.

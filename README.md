@@ -24,7 +24,7 @@
 | Feature | Default behavior |
 | --- | --- |
 | Automatic cross-posting | Checks a public Instagram profile approximately every 6 hours |
-| Media | Photos, videos / Reels and mixed carousels (up to 10 media items per Telegram album) |
+| Media | Photos, videos / Reels and mixed carousels (up to 20 items per Instagram post, split into albums of 10) |
 | Captions | Preserves full text and links, using follow-up Telegram messages when needed |
 | Duplicate protection | Tracks hashed identifiers and quarantines uncertain Telegram deliveries |
 | No hosting | Scheduled workflow runs on GitHub Actions |
