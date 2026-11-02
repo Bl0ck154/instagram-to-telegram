@@ -40,11 +40,15 @@ The default workflow uses **Apify Instagram Scraper** and the **Telegram Bot API
 
 Prefer a guided setup? Try the [interactive setup wizard](https://bl0ck154.github.io/instagram-to-telegram/). It generates a GitHub Actions account configuration in your browser, without collecting API tokens.
 
-### 1. Create your own repository
+### 1. Create a private repository from the template (recommended)
 
-Choose **Use this template → Create a new repository** at the top of this page. You can also fork the repository. Keep the workflow file in `.github/workflows/`.
+**[Create private copy](https://github.com/new?template_owner=Bl0ck154&template_name=instagram-to-telegram&visibility=private)** · [Interactive setup wizard](https://bl0ck154.github.io/instagram-to-telegram/)
 
-> GitHub Actions scheduled workflows may be disabled in forks or new copies. Open the **Actions** tab and enable workflows if GitHub asks you to do so.
+Choose **Private** on GitHub's creation page and create the repository. This avoids GitHub's specific **60-day inactivity cutoff for scheduled workflows in public repos** and needs no extra cron service or fake commits. GitHub Free includes 2,000 monthly Actions minutes shared across your eligible private workflows; **Apify is billed separately**.
+
+**Public deployment?** You can [create a public copy](https://github.com/new?template_owner=Bl0ck154&template_name=instagram-to-telegram&visibility=public) or fork. Public copies need attention to GitHub's 60-day inactivity rule; **public forks additionally start with scheduled Actions disabled**. See [private/public/keepalive/Cloudflare deployment options](docs/DEPLOYMENT.md) before choosing.
+
+This template does **not** copy tokens or configure the bot automatically. Follow the steps below to add credentials and initialize it once.
 
 ### 2. Set four values
 
@@ -85,7 +89,7 @@ flowchart LR
 
 The standard deployment uses **GitHub Actions' built-in scheduler**. No external cron service, webhook, or continuously running server is needed. The workflow's `schedule` trigger (`17 */6 * * *`, UTC) checks for new posts every six hours, **even when nothing new has appeared on Instagram**. You can also run a check manually via **Actions → Instagram to Telegram → Run workflow**. Scheduled starts are best-effort and can be delayed or missed.
 
-**Public-repository inactivity:** GitHub can automatically disable scheduled workflows after **60 days without repository activity**. Posts on the monitored Instagram account are not GitHub repository activity. This repository currently has recent development commits to `main`, but copied projects may not. Do not assume scheduled checks or automated commits to the separate `sync-state` branch will keep the schedule alive. If it stops, open **Actions** in your copy and re-enable the workflow. See the [setup guide](docs/SETUP.md#scheduled-checks-and-github-inactivity).
+**Keeping the schedule active:** In public repositories GitHub can disable scheduled workflows after **60 days without repository activity**. The private template copy recommended above avoids that **specific** cutoff. A new Instagram post does not count as GitHub activity. If you choose a public deployment, see [all maintenance options](docs/DEPLOYMENT.md) (community keepalive actions, manual re-enable, or an optional external Cloudflare Cron). None is currently enabled automatically in the template, and API keepalive is not a GitHub-guaranteed fix.
 
 The action checks posts and Reels separately; it requests the additional details fallback only when a feed is missing or media appears low resolution. It considers up to six distinct candidates per run. It downloads eligible media and sends it to Telegram. State lives in a dedicated **`sync-state`** branch so automated state commits do not clutter the development history. The branch is created automatically on the first run.
 

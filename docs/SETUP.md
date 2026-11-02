@@ -4,7 +4,9 @@ This guide supports one or more **public** Instagram profiles, each mapped to a 
 
 ## Create a copy
 
-Use **Use this template** on the repository page, or fork the repository. In your copy, visit **Actions** and enable workflows if GitHub presents a disabled-workflow banner. Do not alter the scheduled job until the standard setup is working.
+**Recommended:** [Create a private repository from the template](https://github.com/new?template_owner=Bl0ck154&template_name=instagram-to-telegram&visibility=private) instead of forking. Select **Private** and create it with only the default branch. This avoids GitHub's public-repository 60-day scheduled workflow inactivity cutoff. The wizard has a [private/public deployment chooser](https://bl0ck154.github.io/instagram-to-telegram/) and direct setup links for your new repository.
+
+A public fork stays public and scheduled workflows are disabled by default until you enable them. All new deployments need their own Actions Secrets and Variables. See the [deployment comparison and keepalive options](DEPLOYMENT.md).
 
 ## Create the bot and channel
 
@@ -37,9 +39,11 @@ After the test, the normal scheduled run checks every six hours. With more than 
 
 The template runs on GitHub Actions' native cron schedule in `.github/workflows/instagram-to-telegram.yml`, without an external cron service, VPS, or Instagram webhook. Its `17 */6 * * *` schedule means **00:17, 06:17, 12:17 and 18:17 UTC**. GitHub may delay or occasionally drop scheduled runs. The check runs regardless of whether the public Instagram profile has published new content. New Instagram posts do not trigger a workflow run.
 
+**Private deployment is recommended:** the 60-day inactivity cutoff described below is specific to **public** repositories. A private copy created from the public template avoids it, while consuming your included monthly Actions minutes. It still needs your API tokens and initialization.
+
 **Why is the original repository still running?** Its default `main` branch has recent development commits. In public repositories GitHub automatically disables scheduled workflows after **60 days without repository activity**. Instagram posts are unrelated to GitHub repository activity. GitHub's documentation does not guarantee that repeated scheduled checks or commits to our separate `sync-state` branch prevent inactivity disabling, so don't rely on either as a workaround.
 
-To check your copy, open **Actions → Instagram to Telegram** and inspect the recent runs. The event `schedule` identifies GitHub's built-in cron, while `workflow_dispatch` identifies a manually initiated run. If the workflow has been disabled, choose **Enable workflow** on its Actions page, then verify a future scheduled run. If no scheduled run appears, check GitHub's workflow status and permissions. The template does not configure an external scheduler.
+To check your copy, open **Actions → Instagram to Telegram** and inspect the recent runs. The event `schedule` identifies GitHub's built-in cron, while `workflow_dispatch` identifies a manually initiated run. If the workflow has been disabled, choose **Enable workflow** on its Actions page, then verify a future scheduled run. If no scheduled run appears, check GitHub's workflow status and permissions. The template does not configure an external scheduler. Compare [private/public deployment, community keepalive and Cloudflare Cron options](DEPLOYMENT.md) before choosing.
 
 Official references: [Scheduled workflow events](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule) and [Enable or disable a workflow](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/disable-and-enable-workflows).
 
