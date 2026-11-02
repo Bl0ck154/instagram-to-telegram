@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 from pathlib import Path
+import json
 from time import sleep
 import re
 
 import requests
 
 from .config import TelegramConfig
+
+
+class TelegramDeliveryUncertain(RuntimeError):
+    """Telegram may have accepted this request; never retry it automatically."""
 
 
 class TelegramSender:
@@ -34,6 +39,8 @@ class TelegramFallbackSender(TelegramSender):
         try:
             self.primary.send_media(chat_id, caption, files)
         except Exception as error:
+            if isinstance(error, TelegramDeliveryUncertain):
+                raise
             if self.fallback is None:
                 raise
             print(f"Primary Telegram sender failed; falling back to Bot API: {error}")
@@ -49,15 +56,35 @@ class TelegramBot(TelegramSender):
         self.timeout = timeout
 
     def send_media(self, chat_id: str, caption: str, files: list[Path]) -> None:
-        media_files = [path for path in files if path.suffix.lower() in {".jpg", ".jpeg", ".png", ".mp4"}]
-        if not media_files:
-            return
+        if not files or len(files) > 10:
+            raise ValueError("Telegram requires 1–10 media items; refusing to silently drop content.")
+        media_files = list(files)
+        for file_path in media_files:
+            if file_path.suffix.lower() not in {".jpg", ".jpeg", ".png", ".mp4"}:
+                raise ValueError("Unsupported Telegram media type.")
+            with file_path.open("rb") as handle:
+                header = handle.read(24)
+            valid_photo = header.startswith(b"\xff\xd8\xff") or header.startswith(b"\x89PNG\r\n\x1a\n")
+            valid_video = len(header) >= 12 and header[4:8] == b"ftyp"
+            if not (valid_photo or valid_video):
+                raise ValueError("Media content is not a supported photo or MP4 video.")
 
+        # The Bot API caps media captions at 1024, and sendMessage at 4096.
+        # Preserve full text by sending long captions in follow-up messages.
+        inline_caption = caption if len(caption) <= 1024 else ""
         if len(media_files) == 1:
-            self._send_single(chat_id, caption, media_files[0])
-            return
+            self._send_single(chat_id, inline_caption, media_files[0])
+        else:
+            self._send_group(chat_id, inline_caption, media_files)
 
-        self._send_group(chat_id, caption, media_files[:10])
+        if not inline_caption and caption:
+            try:
+                for fragment in _text_fragments(caption):
+                    self._post(f"{self.base_url}/sendMessage", data={"chat_id": chat_id, "text": fragment})
+            except Exception as error:
+                raise TelegramDeliveryUncertain(
+                    "Media may have been posted but the full caption could not be confirmed."
+                ) from error
 
     def _send_single(self, chat_id: str, caption: str, file_path: Path) -> None:
         is_video = file_path.suffix.lower() == ".mp4"
@@ -98,7 +125,10 @@ class TelegramBot(TelegramSender):
         response = requests.Response()
         for attempt in range(3):
             _rewind_files(kwargs.get("files"))
-            response = requests.post(url, timeout=self.timeout, **kwargs)
+            try:
+                response = requests.post(url, timeout=self.timeout, **kwargs)
+            except requests.RequestException as exc:
+                raise TelegramDeliveryUncertain("Telegram request outcome unknown; check channel before retry.") from exc
             if response.status_code == 429:
                 retry_after = 5
                 try:
@@ -107,10 +137,16 @@ class TelegramBot(TelegramSender):
                     pass
                 sleep(retry_after)
                 continue
-            if response.status_code >= 500 and attempt < 2:
-                sleep(2 ** attempt)
-                continue
+            if response.status_code >= 500:
+                raise TelegramDeliveryUncertain(
+                    f"Telegram returned HTTP {response.status_code}; check delivery before retry."
+                )
             self._raise_for_status(response, url)
+            try:
+                if response.json().get("ok") is False:
+                    raise RuntimeError("Telegram API rejected the request.")
+            except (ValueError, AttributeError):
+                pass
             return response
         self._raise_for_status(response, url)
         return response
@@ -134,6 +170,22 @@ class TelegramBot(TelegramSender):
                     "Telegram Bot API returned 403. Add the bot to the target chat/channel and grant posting rights."
                 ) from error
             raise
+
+
+def _text_fragments(text: str, limit: int = 4096) -> list[str]:
+    fragments = []
+    while text:
+        if len(text) <= limit:
+            fragments.append(text)
+            break
+        boundary = text.rfind("\n", 0, limit + 1)
+        if boundary < limit // 2:
+            boundary = limit
+        if boundary != limit:
+            boundary += 1
+        fragments.append(text[:boundary])
+        text = text[boundary:]
+    return fragments
 
 
 def _rewind_files(files: object) -> None:

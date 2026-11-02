@@ -66,6 +66,34 @@ class StateStore:
         values = list(dict.fromkeys([*account.get("processed", []), value]))
         account["processed"] = values[-self.max_items :]
 
+    def is_uncertain(self, username: str, shortcode: str) -> bool:
+        record = self._account(username)
+        return _private_id("post", shortcode, self._key) in record.get("uncertain", {})
+
+    def mark_uncertain(self, username: str, shortcode: str) -> None:
+        record = self._account(username)
+        record.setdefault("uncertain", {})[_private_id("post", shortcode, self._key)] = _now_utc().isoformat()
+
+    def record_stat(self, metric: str, amount: int = 1) -> None:
+        allowed = {"checks", "fetched", "published", "skipped", "dry_runs", "errors", "estimated_apify_results", "uncertain"}
+        if metric not in allowed:
+            raise ValueError("Unknown usage metric.")
+        day = _now_utc().strftime("%Y-%m-%d")
+        stats = self.data.setdefault("stats", {})
+        bucket = stats.setdefault(day, {})
+        bucket[metric] = int(bucket.get(metric, 0)) + amount
+        for old in sorted(stats)[:-30]:
+            del stats[old]
+
+    def increment_failure(self) -> int:
+        health = self.data.setdefault("health", {})
+        count = int(health.get("consecutive_failures", 0)) + 1
+        health["consecutive_failures"] = count
+        return count
+
+    def reset_failures(self) -> None:
+        self.data.setdefault("health", {})["consecutive_failures"] = 0
+
     def external_results_used(self, provider: str, billing_cycle_start_day: int = 1) -> int:
         providers = self._usage_providers(billing_cycle_start_day)
         return int(providers.get(provider, 0))

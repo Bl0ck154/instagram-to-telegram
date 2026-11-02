@@ -14,7 +14,7 @@ from .apify_provider import (
 )
 from .config import AccountConfig, AppConfig
 from .state import StateStore
-from .telegram import create_telegram_sender
+from .telegram import TelegramDeliveryUncertain, create_telegram_sender
 
 
 class ApifySyncRunner:
@@ -32,9 +32,39 @@ class ApifySyncRunner:
 
     def run(self) -> None:
         self.state.load()
+        errors: list[Exception] = []
         for account in self.config.accounts:
-            self._sync_account(account)
-        self.state.save()
+            try:
+                self._sync_account(account)
+            except Exception as error:
+                self.state.record_stat("errors")
+                errors.append(error)
+                print(f"Account sync failed for @{account.username}: {type(error).__name__}")
+            finally:
+                self.state.save()
+        if errors and not (self.config.dry_run or self.config.initialize_only):
+            failures = self.state.increment_failure()
+            self.state.save()
+            if failures >= 2 and self.config.alert_chat_id:
+                self._send_failure_alert(failures, len(errors))
+        elif not errors and not (self.config.dry_run or self.config.initialize_only):
+            self.state.reset_failures()
+            self.state.save()
+        if errors:
+            raise RuntimeError(f"Sync failed for {len(errors)} account(s); see job logs.") from errors[0]
+
+    def _send_failure_alert(self, failures: int, accounts_failed: int) -> None:
+        try:
+            from .telegram import TelegramBot
+            bot = TelegramBot(self.config.telegram.bot_token)
+            bot._post(f"{bot.base_url}/sendMessage", data={
+                "chat_id": self.config.alert_chat_id,
+                "text": f"Instagram to Telegram: {accounts_failed} account sync(s) failed. "
+                        f"Consecutive failed runs: {failures}. Check GitHub Actions."
+            })
+            print("Failure alert sent.")
+        except Exception:
+            print("Could not send failure alert; check Actions logs.")
 
     def diagnose_apify_shortcode(self, shortcode: str) -> None:
         for account in self.config.accounts:
@@ -109,6 +139,7 @@ class ApifySyncRunner:
 
     def _sync_account(self, account: AccountConfig) -> None:
         print(f"Checking @{account.username}")
+        self.state.record_stat("checks")
         used = self.state.external_results_used(
             "apify",
             self.config.apify.billing_cycle_start_day,
@@ -144,11 +175,10 @@ class ApifySyncRunner:
         posts = client.fetch_posts(account, requested)
         print(f"Apify backend extracted {len(posts)} post(s) for @{account.username}.")
 
-        self.state.add_external_results(
-            "apify",
-            charged_results,
-            self.config.apify.billing_cycle_start_day,
-        )
+        charged_results = getattr(client, "requested_results", charged_results)
+        self.state.add_external_results("apify", charged_results, self.config.apify.billing_cycle_start_day)
+        self.state.record_stat("estimated_apify_results", charged_results)
+        self.state.record_stat("fetched", len(posts))
         self.state.save()
 
         if not posts:
@@ -199,15 +229,19 @@ class ApifySyncRunner:
                 self.state.mark_processed(account.username, post.shortcode)
             self.state.save()
 
+        self.state.record_stat("skipped", len(skipped_posts))
         if not new_posts:
             print(f"No eligible new Apify posts for @{account.username}.")
             return
 
         print(f"Found {len(new_posts)} recent Apify posts for @{account.username}.")
-        for post in reversed(new_posts):
+        for post in sorted(new_posts, key=lambda item: (item.published_at, item.shortcode)):
             self._process_post(account, post)
 
     def _process_post(self, account: AccountConfig, post: ApifyPost) -> None:
+        if self.state.is_uncertain(account.username, post.shortcode):
+            print("Telegram delivery requires manual review; automatic resend suppressed.")
+            return
         post_dir = self.config.temp_dir / account.username / post.shortcode
         if post_dir.exists():
             shutil.rmtree(post_dir)
@@ -233,14 +267,22 @@ class ApifySyncRunner:
         ).strip()
 
         if self.config.dry_run:
+            self.state.record_stat("dry_runs")
             print(
                 f"Dry run: would send {len(files)} Apify files "
                 f"for @{account.username} post {post.shortcode}."
             )
         else:
-            self.telegram.send_media(account.telegram_chat_id, caption, files)
+            try:
+                self.telegram.send_media(account.telegram_chat_id, caption, files)
+            except TelegramDeliveryUncertain:
+                self.state.mark_uncertain(account.username, post.shortcode)
+                self.state.record_stat("uncertain")
+                self.state.save()
+                raise
             print(f"Sent Apify post @{account.username} {post.shortcode} to Telegram.")
             self.state.mark_processed(account.username, post.shortcode)
+            self.state.record_stat("published")
             self.state.save()
 
         self._archive_or_cleanup(post_dir, account.username, post.shortcode)

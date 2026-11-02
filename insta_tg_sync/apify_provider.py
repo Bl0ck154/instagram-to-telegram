@@ -36,12 +36,26 @@ class ApifyInstagramClient:
 
     def __init__(self, config: AppConfig) -> None:
         self.config = config
+        self._last_type_counts: dict[str, int] = {}
+        self.requested_results = 0
 
     def fetch_posts(self, account: AccountConfig, limit: int) -> list[ApifyPost]:
         posts: list[ApifyPost] = []
+        self._last_type_counts = {}
+        self.requested_results = 0
         for results_type in self.RESULTS_TYPES:
-            posts.extend(self._fetch_posts(account, limit, results_type))
-        posts.extend(self._fetch_posts(account, self.DETAILS_RESULTS_LIMIT, "details", normalize_limit=limit))
+            part = self._fetch_posts(account, limit, results_type)
+            self._last_type_counts[results_type] = len(part)
+            posts.extend(part)
+        # Details are a recovery path when a feed is empty, or the provider
+        # returned only obviously low-resolution media. Save an actor call on
+        # healthy profiles while keeping the fallback for partial failures.
+        needs_details = (
+            len(self.RESULTS_TYPES) > 0
+            and (not posts or any(not self._last_type_counts.get(t, 0) for t in self.RESULTS_TYPES))
+        ) or any(_small_media_candidate(post) for post in posts)
+        if needs_details:
+            posts.extend(self._fetch_posts(account, self.DETAILS_RESULTS_LIMIT, "details", normalize_limit=limit))
         return _dedupe_posts(posts, prefer_later=True)[:limit]
 
     def fetch_raw_items(self, account: AccountConfig, limit: int, results_type: str) -> list[dict]:
@@ -61,6 +75,7 @@ class ApifyInstagramClient:
             },
             results_type,
         )
+        self.requested_results += limit
         return response.json()
 
     def _fetch_posts(self, account: AccountConfig, limit: int, results_type: str, normalize_limit: int | None = None) -> list[ApifyPost]:
@@ -92,6 +107,15 @@ class ApifyInstagramClient:
 
         response.raise_for_status()
         return response
+
+
+def _small_media_candidate(post: ApifyPost) -> bool:
+    # Explicit URL dimensions only: unknown-size URLs are not proof of
+    # low-quality media and should not incur a details request.
+    return any(
+        0 < max(_dimensions_from_url(url)) < 800
+        for url in post.media_urls
+    )
 
 
 def normalize_apify_posts(items: list[dict], limit: int) -> list[ApifyPost]:
@@ -184,30 +208,83 @@ def _retry_delay(response: requests.Response, attempt: int) -> float:
     return float(2 ** attempt)
 
 
+def _content_suffix(header: bytes, mime: str) -> str:
+    if mime.startswith("text/") or "html" in mime or "json" in mime:
+        raise ValueError("Media endpoint returned text rather than media.")
+    if header.startswith(b"\xff\xd8\xff"):
+        return ".jpg"
+    if header.startswith(b"\x89PNG\r\n\x1a\n"):
+        return ".png"
+    if len(header) >= 12 and header[4:8] == b"ftyp":
+        return ".mp4"
+    raise ValueError("Media download is not a recognizable JPEG, PNG or MP4 file.")
+
+
 def download_apify_media(post: ApifyPost, target_dir: Path, timeout: int, user_agent: str) -> list[Path]:
     target_dir.mkdir(parents=True, exist_ok=True)
     files: list[Path] = []
     for index, url in enumerate(post.media_urls, start=1):
         response, downloaded_url = _download_response(url, post.url, timeout, user_agent)
-        destination = target_dir / f"{post.shortcode}_{index}{_media_suffix(downloaded_url)}"
-        destination.write_bytes(response.content)
-        print(_download_diagnostic(index, len(post.media_urls), downloaded_url, response.content), flush=True)
-        files.append(destination)
+        destination: Path | None = None
+        try:
+            chunks = response.iter_content(chunk_size=65536)
+            initial = b""
+            while len(initial) < 32:
+                chunk = next(chunks, b"")
+                if not chunk:
+                    break
+                initial += chunk
+            suffix = _content_suffix(initial[:32], response.headers.get("Content-Type", "").lower())
+            max_bytes = (10 if suffix != ".mp4" else 50) * 1024 * 1024
+            if int(response.headers.get("Content-Length") or "0") > max_bytes:
+                raise ValueError(f"Telegram media exceeds {max_bytes // 1024 // 1024} MiB limit.")
+            destination = target_dir / f"{post.shortcode}_{index}{suffix}"
+            count = 0
+            with destination.open("wb") as handle:
+                for chunk in (initial,):
+                    count += len(chunk)
+                    if count > max_bytes:
+                        raise ValueError("Media download is too large.")
+                    handle.write(chunk)
+                for chunk in chunks:
+                    if not chunk:
+                        continue
+                    count += len(chunk)
+                    if count > max_bytes:
+                        raise ValueError("Media download exceeds Telegram's upload limit.")
+                    handle.write(chunk)
+            with destination.open("rb") as handle:
+                header = handle.read(48)
+            print(_download_diagnostic(index, len(post.media_urls), downloaded_url, header)
+                  + f", total_bytes={count}", flush=True)
+            files.append(destination)
+        except Exception:
+            if destination is not None:
+                destination.unlink(missing_ok=True)
+            raise
+        finally:
+            response.close()
     return files
 
 
 def _download_response(url: str, referer: str, timeout: int, user_agent: str) -> tuple[requests.Response, str]:
     last_response: requests.Response | None = None
     for candidate_url in _download_url_candidates(url):
-        response = requests.get(candidate_url, headers={"User-Agent": user_agent, "Referer": referer}, timeout=timeout)
+        response = requests.get(candidate_url, headers={"User-Agent": user_agent, "Referer": referer},
+                                timeout=timeout, stream=True)
         if response.ok:
             return response, candidate_url
+        if last_response is not None:
+            last_response.close()
         last_response = response
 
     if last_response is None:
         raise RuntimeError("No media download URL candidates were generated.")
-    last_response.raise_for_status()
-    return last_response, url
+    try:
+        last_response.raise_for_status()
+        raise RuntimeError("Media URL returned a non-success response.")
+    finally:
+        last_response.close()
 
 
 def _download_url_candidates(url: str) -> list[str]:

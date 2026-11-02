@@ -68,6 +68,7 @@ class AppConfig:
     user_agents: list[str] = field(default_factory=list)
     dry_run: bool = False
     initialize_only: bool = False
+    alert_chat_id: str = ""
 
 
 DEFAULT_USER_AGENTS = [
@@ -96,10 +97,23 @@ def parse_config(raw: dict[str, Any]) -> AppConfig:
     telegram = raw.get("telegram") or {}
     telegram_config = _parse_telegram(telegram)
 
-    accounts = [_parse_account(item) for item in raw.get("accounts", [])]
+    accounts_raw = raw.get("accounts", [])
+    extra_accounts = os.environ.get("ACCOUNTS_JSON", "").strip()
+    if extra_accounts:
+        try:
+            accounts_raw = json.loads(extra_accounts)
+        except json.JSONDecodeError as error:
+            raise ValueError("ACCOUNTS_JSON must be a JSON array.") from error
+        if not isinstance(accounts_raw, list) or len(accounts_raw) > 20:
+            raise ValueError("ACCOUNTS_JSON must contain 1-20 accounts.")
+        if any(not isinstance(item, dict) for item in accounts_raw):
+            raise ValueError("Each ACCOUNTS_JSON entry must be an object.")
+    accounts = [_parse_account(item) for item in accounts_raw]
     accounts = [account for account in accounts if account.enabled]
     if not accounts:
         raise ValueError("At least one enabled account is required.")
+    if len({account.username.lower() for account in accounts}) != len(accounts):
+        raise ValueError("Each Instagram username must appear only once; use a separate deployment for multiple destinations.")
 
     proxy = raw.get("proxy") or {}
     proxy_urls = list(proxy.get("urls") or [])
@@ -137,6 +151,7 @@ def parse_config(raw: dict[str, Any]) -> AppConfig:
         user_agents=user_agents,
         dry_run=bool(settings.get("dry_run", False)),
         initialize_only=bool(settings.get("initialize_only", False)),
+        alert_chat_id=os.environ.get("ALERT_CHAT_ID", "").strip(),
     )
 
 

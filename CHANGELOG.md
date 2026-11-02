@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Preserve long captions in Telegram text messages instead of truncating.
+- Stream and validate downloaded media by actual file signature and MIME type.
+- Quarantine uncertain Telegram deliveries rather than risking duplicate retries.
+- Skip unnecessary Apify details calls; keep fallback for incomplete feeds.
+- Process new posts in chronological order.
+- Add optional multi-account configuration (`ACCOUNTS_JSON`).
+- Add failure alerts (`ALERT_CHAT_ID`), privacy-safe usage summaries and interactive setup wizard.
+
 ## 1.0.0 (2026-11-02)
 
 First documented public release.
