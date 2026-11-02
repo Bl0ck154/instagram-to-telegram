@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Set up Instagram to Telegram automatic reposting in minutes. Free open-source Python workflow using GitHub Actions and Apify.">
+<title>Instagram → Telegram · Setup Wizard</title>
+<style>
+:root{font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top left,#202d54 0,#101628 42%,#0a1020 100%);color:#ecf3ff;line-height:1.6;min-height:100vh}
+main{max-width:900px;margin:0 auto;padding:48px 22px 100px}a{color:#85d8ff}a:hover{color:#b8edff}
+nav{display:flex;align-items:center;justify-content:space-between;gap:18px;font-size:14px;margin-bottom:50px}
+.tag{display:inline-flex;align-items:center;border:1px solid #476185;background:#17294a;border-radius:99px;padding:5px 14px;color:#bde7ff;font-size:13px}
+h1{font-size:clamp(36px,6vw,62px);line-height:1.07;letter-spacing:-.05em;margin:18px 0 16px}h1 span{color:#6ad7ff}
+.lead{color:#b5c5dc;max-width:670px;font-size:18px;margin-bottom:32px}
+.card{background:#111d32;border:1px solid #2a4163;border-radius:22px;padding:25px;margin:24px 0;box-shadow:0 8px 30px #050b1760}
+h2{font-size:21px;line-height:1.3;margin:0 0 12px;letter-spacing:-.02em}
+.number{display:inline-grid;place-items:center;width:31px;height:31px;background:#224b70;color:#acf0ff;border-radius:10px;margin-right:10px;font-size:14px}
+label{display:block;margin:12px 0 7px;font-size:14px;font-weight:600;color:#d5e2f2}
+input{width:100%;background:#0b1628;border:1px solid #476181;border-radius:10px;padding:12px 14px;font:inherit;color:#fff;min-height:45px}
+input:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid #7ae1ff;outline-offset:3px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+button,.button{border:1px solid #577b9d;background:#203857;color:#effcff;padding:11px 17px;font:inherit;font-weight:650;border-radius:10px;cursor:pointer;display:inline-block;text-decoration:none}
+button:hover,.button:hover{background:#295078}
+.primary{color:#051326;background:#68d3ff;border-color:#68d3ff}.primary:hover{background:#a0e7ff}
+.account{border:1px solid #344c6a;border-radius:14px;padding:16px;margin:12px 0;background:#152139}
+.accountheader{display:flex;justify-content:space-between;align-items:center}.accountheader button{padding:5px 11px;font-size:13px}
+.hint{color:#9db1ca;font-size:13px;margin-top:8px}.warn{color:#ffb8a7}
+code,pre{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}code{color:#b9f5fe}
+pre{overflow:auto;background:#071322;border:1px solid #2a4662;padding:20px;border-radius:12px;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}.footer{margin-top:35px;font-size:14px;color:#9fb1c9}
+ol{padding-left:23px}li{margin-bottom:7px}
+@media(max-width:640px){.grid{grid-template-columns:1fr}main{padding-top:24px}nav{margin-bottom:34px}.card{padding:19px}}
+</style>
+</head>
+<body>
+<main>
+<nav><strong>Instagram <span aria-hidden="true">→</span> Telegram</strong><a href="https://github.com/Bl0ck154/instagram-to-telegram">View source on GitHub</a></nav>
+<div class="tag">Open source · No server required</div>
+<h1>Connect Instagram to <span>Telegram</span></h1>
+<p class="lead">Automatically cross-post new photos, Reels and carousels from a public Instagram profile. A guided setup for GitHub Actions and Apify. Your account details stay in your browser.</p>
+<section class="card">
+<h2><span class="number">1</span> Create your repository</h2>
+<p>Click the button to create your own copy. You will configure it in GitHub.</p>
+<a class="button primary" href="https://github.com/new?template_name=instagram-to-telegram&amp;template_owner=Bl0ck154" target="_blank" rel="noopener">Create from template</a>
+<p class="hint">After creating your copy, enable GitHub Actions if GitHub asks you. GitHub's scheduled runs may start later than the exact cron time.</p>
+</section>
+<section class="card">
+<h2><span class="number">2</span> Add your channels</h2>
+<p>Use one row per <strong>Instagram profile → Telegram channel</strong> pair. Accounts must be public. Add the bot as a channel administrator with posting permission.</p>
+<div id="accounts" aria-live="polite"></div>
+<button type="button" id="add">+ Add another Instagram account</button>
+<p class="hint">To send the same Instagram profile to several channels, use separate repository deployments. We prevent duplicate usernames in one setup to avoid collisions in the duplicate tracker.</p>
+</section>
+<section class="card">
+<h2><span class="number">3</span> Copy the configuration</h2>
+<p>Open <strong>Settings → Secrets and variables → Actions → Variables</strong> in your new repository. Create a variable named <code>ACCOUNTS_JSON</code> with the value below.</p>
+<button type="button" class="primary" id="generate">Generate configuration</button>
+<div id="message" role="status" aria-live="polite"></div>
+<pre id="result" tabindex="0" aria-label="Generated account configuration">Add your first account and select Generate configuration.</pre>
+<button type="button" id="copy" disabled>Copy JSON</button>
+</section>
+<section class="card">
+<h2><span class="number">4</span> Add two secrets and run</h2>
+<ol>
+<li>Get a Telegram bot from <a href="https://t.me/BotFather">BotFather</a>. Save its token as the GitHub Actions <strong>Secret</strong> <code>TELEGRAM_BOT_TOKEN</code>.</li>
+<li>Get an <a href="https://console.apify.com/">Apify</a> API token. Save it as the <strong>Secret</strong> <code>APIFY_TOKEN</code>.</li>
+<li>In <strong>Actions → Instagram to Telegram → Run workflow</strong>, run once with <code>initialize_only=true</code>. This records old posts without sending them.</li>
+<li>Run once with <code>dry_run=true</code> to test without publishing. New content will then be checked about every six hours.</li>
+<li>Optional: set variable <code>ALERT_CHAT_ID</code> to a Telegram chat that should receive alerts after two consecutive failed syncs.</li>
+</ol>
+<p class="hint">The wizard never asks you to paste a token or stores your entered accounts on a server. Apify has separate usage charges; check its pricing before enabling your workflow.</p>
+<div class="row"><a class="button primary" href="https://github.com/Bl0ck154/instagram-to-telegram/blob/main/docs/SETUP.md">Detailed setup guide</a><a class="button" href="https://github.com/Bl0ck154/instagram-to-telegram/actions/runs/41366488814">Verified dry-run log</a></div>
+</section>
+<footer class="footer">Public Instagram accounts only. No private profiles or Stories. Respect creator permissions and platform terms. <a href="https://github.com/Bl0ck154/instagram-to-telegram/blob/main/LICENSE">MIT license</a>.</footer>
+</main>
+<script>
+"use strict";
+const accounts=document.getElementById("accounts");
+const result=document.getElementById("result");
+const message=document.getElementById("message");
+const copy=document.getElementById("copy");
+let nextId=0;
+function addAccount() {
+  const id=nextId++;
+  const section=document.createElement("section");
+  section.className="account";
+  section.innerHTML='<div class="accountheader"><strong>Channel '+(id+1)+'</strong><button type="button" aria-label="Remove account">Remove</button></div>'+
+    '<div class="grid"><div><label for="ig'+id+'">Public Instagram username</label><input id="ig'+id+'" name="instagram" placeholder="example.profile" maxlength="30" autocomplete="off"></div>'+
+    '<div><label for="tg'+id+'">Telegram channel username or ID</label><input id="tg'+id+'" name="telegram" placeholder="@my_channel" autocomplete="off"></div></div>';
+  section.querySelector("button").addEventListener("click",()=>{section.remove(); result.textContent="Generate again after editing.";copy.disabled=true;});
+  accounts.append(section);
+}
+function generate() {
+  const rows=Array.from(accounts.querySelectorAll(".account"));
+  const items=[], seen=new Set();
+  if(!rows.length){message.textContent="Add at least one account.";message.className="warn";return;}
+  for(const section of rows){
+    const username=section.querySelector('[name="instagram"]').value.trim().replace(/^@/,"");
+    const chat=section.querySelector('[name="telegram"]').value.trim();
+    if(!/^[A-Za-z0-9._]{1,30}$/.test(username)){message.textContent="Check Instagram usernames. Use 1–30 letters, digits, dots or underscores.";message.className="warn";return;}
+    if(!/^@[A-Za-z0-9_]{5,32}$/.test(chat)&&!/^-?[0-9]{5,20}$/.test(chat)){message.textContent="Use a Telegram @channelname or numeric chat ID.";message.className="warn";return;}
+    if(seen.has(username.toLowerCase())){message.textContent="Instagram usernames must be unique.";message.className="warn";return;}
+    seen.add(username.toLowerCase());
+    items.push({username:username,telegram_chat_id:chat,enabled:true,check_limit:6,initial_skip:6});
+  }
+  if(items.length>20){message.textContent="Limit: 20 accounts per deployment.";message.className="warn";return;}
+  result.textContent=JSON.stringify(items);
+  message.textContent="Ready. Copy this into the ACCOUNTS_JSON GitHub Actions variable.";
+  message.className="hint"; copy.disabled=false;
+}
+accounts.addEventListener("input",()=>{copy.disabled=true;message.textContent="Regenerate the JSON after editing your accounts.";});
+document.getElementById("add").addEventListener("click",()=>{addAccount();copy.disabled=true;});
+document.getElementById("generate").addEventListener("click",generate);
+copy.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(result.textContent);message.textContent="Copied.";message.className="hint";}catch(e){message.textContent="Select and copy the JSON above manually.";message.className="warn";}});
+addAccount();
+</script>
+</body>
+</html>

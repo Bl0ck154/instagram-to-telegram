@@ -1,6 +1,6 @@
 # Setup and troubleshooting
 
-This guide assumes you want to mirror new posts from one **public** Instagram profile to one Telegram channel.
+This guide supports one or more **public** Instagram profiles, each mapped to a Telegram channel. Use the [setup wizard](https://bl0ck154.github.io/instagram-to-telegram/) for a guided configuration.
 
 ## Create a copy
 
@@ -47,12 +47,16 @@ After the test, the normal scheduled run checks every six hours. Scheduled Actio
 | No new content | First-run baseline, duplicate state and 48-hour freshness filter |
 | State API error | Ensure Actions can write repository contents; do not disable the `sync-state` branch |
 | Missing newer Reels | Check the Apify run output and timestamp fields; the system deliberately skips undated items |
+| Uncertain Telegram delivery | Inspect the destination and the `sync-state` journal; the post stays quarantined to prevent an automatic duplicate |
+| Alerts not received | Set `ALERT_CHAT_ID` and bot posting rights; alerts start after two consecutive failed real runs, never dry-runs |
 
 ### Important recovery warning
 
 **Do not delete `sync-state` or reset its history** to troubleshoot missing posts. It records which Instagram posts were already processed and the local Apify usage counters. Removing it may make old content eligible again or reset a safety counter.
 
-If a scheduled run fails after posting some media, inspect the job log before rerunning it. If state persistence failed, a retry may duplicate a post.
+If Telegram times out, loses the connection or returns HTTP 5xx, the post is quarantined in `sync-state` instead of blindly retried. Check the channel before manually resolving that entry. If GitHub state persistence fails after a confirmed post, a later retry could still duplicate it.
+
+The **Usage and delivery summary** step reports aggregate checks, posted items, failures, estimated Apify requested results and uncertain deliveries. It does **not** measure actual Apify-billed results. Media captions longer than 1024 characters are sent in extra text messages. Files above Telegram's upload limits are rejected before sending.
 
 ## Advanced backends and local testing
 

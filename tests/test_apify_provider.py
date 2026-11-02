@@ -174,7 +174,6 @@ def test_apify_client_fetches_posts_and_reels(monkeypatch):
     assert calls == [
         ("posts", "https://www.instagram.com/account/"),
         ("reels", "https://www.instagram.com/account/reels/"),
-        ("details", "https://www.instagram.com/account/"),
     ]
     assert [post.shortcode for post in posts] == ["POST", "REEL"]
 

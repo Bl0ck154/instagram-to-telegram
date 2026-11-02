@@ -11,7 +11,7 @@
 ![License](https://img.shields.io/badge/License-MIT-blue)
 ![GitHub Actions](https://img.shields.io/badge/Hosting-GitHub_Actions-2088FF?logo=githubactions&logoColor=white)
 
-[**Get started**](#quick-start) · [How it works](#how-it-works) · [Costs](#costs-and-limits) · [Troubleshooting](docs/SETUP.md#troubleshooting)
+[**Setup wizard**](https://bl0ck154.github.io/instagram-to-telegram/) · [Get started](#quick-start) · [How it works](#how-it-works) · [Costs](#costs-and-limits) · [Troubleshooting](docs/SETUP.md#troubleshooting)
 
 </div>
 
@@ -25,16 +25,20 @@
 | --- | --- |
 | Automatic cross-posting | Checks a public Instagram profile approximately every 6 hours |
 | Media | Photos, videos / Reels and mixed carousels (up to 10 media items per Telegram album) |
-| Captions | Preserves the Instagram caption and adds the original post link |
-| Duplicate protection | Tracks posted items using hashed identifiers; rejects stale/undated content |
+| Captions | Preserves full text and links, using follow-up Telegram messages when needed |
+| Duplicate protection | Tracks hashed identifiers and quarantines uncertain Telegram deliveries |
 | No hosting | Scheduled workflow runs on GitHub Actions |
 | Privacy | Bot and Apify tokens are stored in GitHub Actions Secrets |
 | Safe setup | First-run baseline prevents a flood of old Instagram posts |
+| Multiple accounts | Up to 20 public Instagram profiles, each mapped to a Telegram destination |
+| Reporting | Run summaries: checks, published items, failures, estimated Apify results |
 | Flexible | Optional advanced backends for local use, separate from lightweight default |
 
 The default workflow uses **Apify Instagram Scraper** and the **Telegram Bot API**. Apify is an external service that may charge for usage; read [Costs and limits](#costs-and-limits).
 
 ## Quick start
+
+Prefer a guided setup? Try the [interactive setup wizard](https://bl0ck154.github.io/instagram-to-telegram/). It generates a GitHub Actions account configuration in your browser, without collecting API tokens.
 
 ### 1. Create your own repository
 
@@ -77,7 +81,7 @@ flowchart LR
     C <--> G[(Hashed sync state)]
 ```
 
-The action checks the public profile through separate posts, Reels and detail requests, then considers up to six distinct candidates per run. It downloads eligible media and sends it to Telegram. State lives in a dedicated **`sync-state`** branch so automated state commits do not clutter the development history. The branch is created automatically on the first run.
+The action checks posts and Reels separately; it requests the additional details fallback only when a feed is missing or media appears low resolution. It considers up to six distinct candidates per run. It downloads eligible media and sends it to Telegram. State lives in a dedicated **`sync-state`** branch so automated state commits do not clutter the development history. The branch is created automatically on the first run.
 
 The anti-duplicate logic rejects new candidates with missing timestamps, future timestamps or publication times older than **48 hours** by default. This guards against a known Apify partial-failure case in which old Reels were returned as new content. You can change the threshold with `apify.max_post_age_hours` in `config.example.yml` (1–168 hours).
 
@@ -85,15 +89,15 @@ The anti-duplicate logic rejects new candidates with missing timestamps, future 
 
 - **Apify usage is separate from GitHub Actions.** Check the [Apify Instagram Scraper pricing](https://apify.com/apify/instagram-scraper) and your account's current free credits before you run the workflow.
 - The default configuration caps locally estimated Apify *results* at **1,800 per billing cycle** starting on day **26**. This is a safety guard, **not an invoice calculator or a guaranteed spending limit**. Actor runs may have different billable usage.
-- Every check performs separate requests for posts, Reels and details. More frequent schedules can use more Apify credits.
+- Each check uses posts and Reels requests; details requests are a conditional fallback. More frequent schedules and additional accounts may use more Apify credits.
 - GitHub Actions and Telegram Bot API have their own platform limits. Large files and album sizes may exceed Telegram's restrictions.
-- The default configuration monitors **one public Instagram account**. Stories and private accounts are not supported by this no-login setup.
+- The default setup monitors **one public Instagram account**. The optional `ACCOUNTS_JSON` variable supports up to 20 distinct public accounts, each with its own destination. Stories and private accounts are unsupported.
 
 Do not use this tool to repost material you do not have permission to redistribute. Respect Instagram's terms, Telegram's rules and the creator's rights.
 
 ## Configuration
 
-The four repository values above are sufficient for the standard deployment. See [`config.example.yml`](config.example.yml) for the schedule-independent settings: post scan depth, caption template, maximum age and Apify result cap.
+The four repository values above work for one account. For multiple profiles, use the `ACCOUNTS_JSON` Actions variable generated by the [wizard](https://bl0ck154.github.io/instagram-to-telegram/) instead of the two single-account variables. Optionally configure `ALERT_CHAT_ID` for failure alerts after two consecutive failed sync runs. The Actions run summary includes privacy-safe aggregate activity counters. See [`config.example.yml`](config.example.yml) for the schedule-independent settings: post scan depth, caption template, maximum age and Apify result cap.
 
 Only **PyYAML** and **requests** are installed by the normal hosted workflow. Playwright, Telethon, Instaloader and `curl_cffi` remain optional for advanced local setups and are not used in the default production path.
 
@@ -136,7 +140,11 @@ Use GitHub Actions Secrets. Never commit tokens or sessions. See [SECURITY.md](S
 
 **Does it support multiple Instagram accounts?**
 
-The default workflow reads one Instagram username and destination from repository variables. The underlying configuration format supports multiple entries, but that requires a custom setup.
+Yes. Use the [setup wizard](https://bl0ck154.github.io/instagram-to-telegram/) to create an `ACCOUNTS_JSON` variable. Each public Instagram account maps to one Telegram channel or group.
+
+## Verified workflow example
+
+A [real GitHub Actions dry-run](https://github.com/Bl0ck154/instagram-to-telegram/actions/runs/41366488814) shows Apify fetching, duplicate filtering and state persistence, without publishing to a real Telegram channel. The illustration above is a concept, not a screenshot.
 
 ## Related project
 
