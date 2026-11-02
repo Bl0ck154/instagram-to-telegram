@@ -28,12 +28,15 @@
       ]
     }
   },
-  "health": {},
+  "health": {
+    "consecutive_failures": 0,
+    "next_account_index": 0
+  },
   "stats": {
     "2026-11-02": {
       "checks": 3,
       "estimated_apify_results": 36,
-      "fetched": 12,
+      "fetched": 18,
       "skipped": 0
     }
   },
