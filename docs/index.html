@@ -46,6 +46,11 @@ code,pre{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}code{color:#
 pre{overflow:auto;background:#071322;border:1px solid #2a4662;padding:20px;border-radius:12px;font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere}
 .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}.footer{margin-top:35px;font-size:14px;color:#9fb1c9}
 ol{padding-left:23px}li{margin-bottom:7px}
+.deploy{border:1px solid #365272;border-radius:13px;padding:18px;background:#14263d}
+.deploy.recommended{border-color:#5dbecb;background:#152d42}
+.deploy h3{margin:0 0 7px;font-size:17px}
+.deploy p{font-size:14px;color:#c8d8eb;margin:8px 0 14px}
+[hidden]{display:none!important}
 @media(max-width:640px){.grid{grid-template-columns:1fr}main{padding-top:24px}nav{margin-bottom:34px}.card{padding:19px}}
 </style>
 </head>
@@ -57,9 +62,29 @@ ol{padding-left:23px}li{margin-bottom:7px}
 <p class="lead">Automatically cross-post new photos, Reels and carousels from a public Instagram profile. A guided setup for GitHub Actions and Apify. Your account details stay in your browser.</p>
 <section class="card">
 <h2><span class="number">1</span> Create your repository</h2>
-<p>Click the button to create your own copy. You will configure it in GitHub.</p>
-<a class="button primary" href="https://github.com/new?template_name=instagram-to-telegram&amp;template_owner=Bl0ck154" target="_blank" rel="noopener">Create from template</a>
-<p class="hint">After creating your copy, enable GitHub Actions if GitHub asks you. GitHub's scheduled runs may start later than the exact cron time.</p>
+<p>Create a repository from the template. For automatic reposting, a private copy is the easiest way to avoid GitHub's 60-day inactivity cutoff for public repositories.</p>
+<div class="grid">
+  <div class="deploy recommended">
+    <h3>Private copy · Recommended</h3>
+    <p>No 60-day public-repository schedule cutoff. Uses your GitHub Actions minutes (GitHub Free includes 2,000 minutes/month, shared with your other private workflows).</p>
+    <a class="button primary" href="https://github.com/new?template_owner=Bl0ck154&amp;template_name=instagram-to-telegram&amp;visibility=private" target="_blank" rel="noopener">Create private copy</a>
+  </div>
+  <div class="deploy">
+    <h3>Public copy</h3>
+    <p>Standard hosted runners are free, but GitHub may disable scheduled checks after 60 days without repository activity. See the maintenance options first.</p>
+    <a class="button" href="https://github.com/new?template_owner=Bl0ck154&amp;template_name=instagram-to-telegram&amp;visibility=public" target="_blank" rel="noopener">Create public copy</a>
+  </div>
+</div>
+<p class="hint">Choose <strong>Use this template</strong> rather than Fork for a fresh deployment. A fork stays public and scheduled Actions are disabled until you enable them yourself. Keep only the default branch when creating a template copy.</p>
+<p class="hint">A new repository still needs your Telegram and Apify secrets and a first-run initialization. GitHub Actions may also require enabling depending on account settings. <a href="https://github.com/Bl0ck154/instagram-to-telegram/blob/main/docs/DEPLOYMENT.md">Compare all deployment options</a>.</p>
+<label for="repo-url">Your new repository URL (optional — unlocks direct setup links)</label>
+<input id="repo-url" type="text" placeholder="https://github.com/yourname/your-repo" autocomplete="off" spellcheck="false">
+<p class="hint" id="repo-hint" role="status" aria-live="polite">Enter your repository URL after creating it.</p>
+<div class="row">
+  <a class="button" id="repo-variables" hidden target="_blank" rel="noopener">Open Actions variables</a>
+  <a class="button" id="repo-secrets" hidden target="_blank" rel="noopener">Open Actions secrets</a>
+  <a class="button" id="repo-workflow" hidden target="_blank" rel="noopener">Open sync workflow</a>
+</div>
 </section>
 <section class="card">
 <h2><span class="number">2</span> Add your channels</h2>
@@ -70,7 +95,7 @@ ol{padding-left:23px}li{margin-bottom:7px}
 </section>
 <section class="card">
 <h2><span class="number">3</span> Copy the configuration</h2>
-<p>Open <strong>Settings → Secrets and variables → Actions → Variables</strong> in your new repository. Create a variable named <code>ACCOUNTS_JSON</code> with the value below.</p>
+<p>Open <strong>Settings → Secrets and variables → Actions → Variables</strong> in your new repository (or use the direct link in step 1). Create <code>ACCOUNTS_JSON</code> with the value below.</p>
 <button type="button" class="primary" id="generate">Generate configuration</button>
 <div id="message" role="status" aria-live="polite"></div>
 <pre id="result" tabindex="0" aria-label="Generated account configuration">Add your first account and select Generate configuration.</pre>
@@ -81,11 +106,11 @@ ol{padding-left:23px}li{margin-bottom:7px}
 <ol>
 <li>Get a Telegram bot from <a href="https://t.me/BotFather">BotFather</a>. Save its token as the GitHub Actions <strong>Secret</strong> <code>TELEGRAM_BOT_TOKEN</code>.</li>
 <li>Get an <a href="https://console.apify.com/">Apify</a> API token. Save it as the <strong>Secret</strong> <code>APIFY_TOKEN</code>.</li>
-<li>In <strong>Actions → Instagram to Telegram → Run workflow</strong>, run once with <code>initialize_only=true</code>. This records old posts without sending them.</li>
+<li>Check the <strong>Actions</strong> tab and enable the workflow if GitHub asks. Run <strong>Instagram to Telegram → Run workflow</strong> with <code>initialize_only=true</code>. This records old posts without sending them.</li>
 <li>Run once with <code>dry_run=true</code> to test without publishing. New content will then be checked about every six hours.</li>
 <li>Optional: set variable <code>ALERT_CHAT_ID</code> to a Telegram chat that should receive alerts after two consecutive failed syncs.</li>
 </ol>
-<p class="hint">Scheduling uses GitHub Actions' built-in cron, not an external cron service. It checks on a timer even if Instagram has no new posts. Public repositories can have scheduled workflows disabled after 60 days without repository activity; Instagram posts and scheduled checks should not be relied on to prevent this. Re-enable it in your repository's Actions tab if it stops. <a href="https://github.com/Bl0ck154/instagram-to-telegram/blob/main/docs/SETUP.md#scheduled-checks-and-github-inactivity">Scheduling details</a>.</p>
+<p class="hint">GitHub Actions checks on its built-in six-hour schedule even when Instagram has no new posts. Private copies avoid the <em>public</em> repository 60-day inactivity cutoff, but schedules are best-effort and can still fail for other reasons. For public deployments, see <a href="https://github.com/Bl0ck154/instagram-to-telegram/blob/main/docs/DEPLOYMENT.md">the keepalive and external-cron options</a>.</p>
 <p class="hint">The wizard never asks you to paste a token or stores your entered accounts on a server. Apify has separate usage charges; check its pricing before enabling your workflow.</p>
 <div class="row"><a class="button primary" href="https://github.com/Bl0ck154/instagram-to-telegram/blob/main/docs/SETUP.md">Detailed setup guide</a><a class="button" href="https://github.com/Bl0ck154/instagram-to-telegram/actions/runs/41366488814">Verified dry-run log</a></div>
 </section>
@@ -97,6 +122,28 @@ const accounts=document.getElementById("accounts");
 const result=document.getElementById("result");
 const message=document.getElementById("message");
 const copy=document.getElementById("copy");
+const repoInput=document.getElementById("repo-url");
+const repoHint=document.getElementById("repo-hint");
+const repoLinks={
+  "repo-variables":"/settings/variables/actions",
+  "repo-secrets":"/settings/secrets/actions",
+  "repo-workflow":"/actions/workflows/instagram-to-telegram.yml"
+};
+function updateRepositoryLinks() {
+  const value=repoInput.value.trim();
+  const match=/^(?:https:\/\/github\.com\/)?([A-Za-z0-9-]{1,39})\/([A-Za-z0-9_.-]{1,100})\/?$/.exec(value);
+  for(const id of Object.keys(repoLinks)){document.getElementById(id).hidden=true;}
+  if(!value){repoHint.textContent="Enter your repository URL after creating it.";return;}
+  if(!match){repoHint.textContent="Enter a GitHub URL like https://github.com/yourname/your-repo.";return;}
+  const base="https://github.com/"+match[1]+"/"+match[2];
+  for(const [id,path] of Object.entries(repoLinks)){
+    const link=document.getElementById(id);
+    link.href=base+path;
+    link.hidden=false;
+  }
+  repoHint.textContent="Direct setup links ready for "+match[1]+"/"+match[2]+".";
+}
+repoInput.addEventListener("input",updateRepositoryLinks);
 let nextId=0;
 function addAccount() {
   const id=nextId++;
