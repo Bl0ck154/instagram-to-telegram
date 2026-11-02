@@ -43,6 +43,7 @@ class ApifyConfig:
     max_results_per_run: int = 3
     monthly_result_cap: int = 300
     billing_cycle_start_day: int = 1
+    max_post_age_hours: int = 48
 
 
 @dataclass(frozen=True)
@@ -144,6 +145,9 @@ def _parse_apify(raw: dict[str, Any]) -> ApifyConfig:
     max_results_per_run = int(os.environ.get("APIFY_MAX_RESULTS_PER_RUN") or raw.get("max_results_per_run", 3))
     monthly_result_cap = int(os.environ.get("APIFY_MONTHLY_RESULT_CAP") or raw.get("monthly_result_cap", 300))
     billing_cycle_start_day = int(os.environ.get("APIFY_BILLING_CYCLE_START_DAY") or raw.get("billing_cycle_start_day", 1))
+    max_post_age_hours = int(os.environ.get("APIFY_MAX_POST_AGE_HOURS") or raw.get("max_post_age_hours", 48))
+    if not 1 <= max_post_age_hours <= 168:
+        raise ValueError("apify.max_post_age_hours must be between 1 and 168.")
     if not 1 <= billing_cycle_start_day <= 28:
         raise ValueError("apify.billing_cycle_start_day must be between 1 and 28.")
     return ApifyConfig(
@@ -153,6 +157,7 @@ def _parse_apify(raw: dict[str, Any]) -> ApifyConfig:
         max_results_per_run=max_results_per_run,
         monthly_result_cap=monthly_result_cap,
         billing_cycle_start_day=billing_cycle_start_day,
+        max_post_age_hours=max_post_age_hours,
     )
 
 

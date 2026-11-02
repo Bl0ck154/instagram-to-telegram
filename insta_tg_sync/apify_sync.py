@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+from datetime import datetime, timedelta, timezone
 import time
 from pathlib import Path
 
@@ -173,16 +174,36 @@ class ApifySyncRunner:
             return
 
         processed = self.state.processed(account.username)
-        new_posts = [
-            post
-            for post in posts[: account.check_limit]
-            if post.shortcode not in processed
-        ]
+        now = datetime.now(timezone.utc)
+        max_age = timedelta(hours=self.config.apify.max_post_age_hours)
+        max_clock_skew = timedelta(minutes=10)
+        new_posts: list[ApifyPost] = []
+        skipped_posts: list[ApifyPost] = []
+        for post in posts[: account.check_limit]:
+            if post.shortcode in processed:
+                continue
+            if post.published_at is None:
+                print("Skipping Apify post without a trustworthy publication timestamp.")
+                skipped_posts.append(post)
+            elif not -max_clock_skew <= now - post.published_at <= max_age:
+                print("Skipping Apify post outside the publication freshness window.")
+                skipped_posts.append(post)
+            else:
+                new_posts.append(post)
+
+        # Permanently suppress stale/undated items so changed profile order or
+        # pinned Reels cannot resurrect them on subsequent scheduled runs.
+        # Dry runs must not modify the duplicate index.
+        if skipped_posts and not self.config.dry_run:
+            for post in skipped_posts:
+                self.state.mark_processed(account.username, post.shortcode)
+            self.state.save()
+
         if not new_posts:
-            print(f"No new Apify posts for @{account.username}.")
+            print(f"No eligible new Apify posts for @{account.username}.")
             return
 
-        print(f"Found {len(new_posts)} new Apify posts for @{account.username}.")
+        print(f"Found {len(new_posts)} recent Apify posts for @{account.username}.")
         for post in reversed(new_posts):
             self._process_post(account, post)
 

@@ -166,3 +166,16 @@ def test_parse_config_supports_public_runtime_variables(monkeypatch):
     assert config.apify.monthly_result_cap == 1234
     assert config.apify.billing_cycle_start_day == 17
     assert config.browser_timezone == "Europe/Berlin"
+
+
+def test_parse_config_supports_apify_max_post_age_hours(monkeypatch):
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "token")
+    monkeypatch.setenv("CHAT", "@chat")
+    monkeypatch.setenv("APIFY_MAX_POST_AGE_HOURS", "72")
+
+    config = parse_config({
+        "telegram": {"bot_token_env": "TELEGRAM_BOT_TOKEN"},
+        "accounts": [{"username": "account", "telegram_chat_id_env": "CHAT"}],
+        "apify": {"max_post_age_hours": 48},
+    })
+    assert config.apify.max_post_age_hours == 72

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from datetime import datetime, timezone
 from pathlib import Path
 import re
 from time import sleep
@@ -17,6 +18,7 @@ class ApifyPost:
     url: str
     caption: str
     media_urls: list[str]
+    published_at: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -107,6 +109,7 @@ def normalize_apify_posts(items: list[dict], limit: int) -> list[ApifyPost]:
                 url=item.get("url") or f"https://www.instagram.com/p/{shortcode}/",
                 caption=item.get("caption") or "",
                 media_urls=media_urls,
+                published_at=_published_at(item),
             )
         )
         if len(posts) >= limit:
@@ -130,12 +133,40 @@ def _dedupe_posts(posts: list[ApifyPost], prefer_later: bool = False) -> list[Ap
     for post in posts:
         if post.shortcode in seen:
             if prefer_later:
-                unique[index_by_shortcode[post.shortcode]] = post
+                index = index_by_shortcode[post.shortcode]
+                previous = unique[index]
+                if post.published_at is None and previous.published_at is not None:
+                    post = replace(post, published_at=previous.published_at)
+                unique[index] = post
             continue
         seen.add(post.shortcode)
         index_by_shortcode[post.shortcode] = len(unique)
         unique.append(post)
     return unique
+
+
+def _published_at(item: dict) -> datetime | None:
+    """Read the original Instagram publication time, never the scrape time."""
+    raw = item.get("timestamp")
+    if raw is None:
+        raw = item.get("takenAtTimestamp")
+
+    try:
+        if isinstance(raw, bool):
+            return None
+        if isinstance(raw, (int, float)):
+            if not 0 < raw < 10**14:
+                return None
+            seconds = raw / 1000 if raw > 10**11 else raw
+            return datetime.fromtimestamp(seconds, tz=timezone.utc)
+        if isinstance(raw, str):
+            published = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            if published.tzinfo is None:
+                return None
+            return published.astimezone(timezone.utc)
+    except (ValueError, OverflowError, OSError):
+        pass
+    return None
 
 
 def _direct_url(username: str, results_type: str) -> str:

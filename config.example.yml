@@ -20,6 +20,7 @@ apify:
   max_results_per_run: 6
   monthly_result_cap: 1800
   billing_cycle_start_day: 26
+  max_post_age_hours: 48 # ignore stale/undated posts even if pinned or re-ordered
 
 settings:
   backend: apify

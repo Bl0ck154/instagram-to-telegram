@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from insta_tg_sync.apify_provider import ApifyInstagramClient, _download_url_candidates, _image_dimensions, normalize_apify_posts
 from insta_tg_sync.config import AccountConfig, ApifyConfig, AppConfig, TelegramConfig
 
@@ -293,3 +295,55 @@ def test_apify_client_retries_transient_server_error(monkeypatch):
     assert calls[:2] == ["posts", "posts"]
     assert sleeps == [2.0]
     assert posts[0].shortcode == "POST"
+
+
+def test_apify_normalizes_published_timestamp_and_rejects_untrusted_dates():
+    rows = [
+        {"shortCode": "ISO", "timestamp": "2026-10-19T20:00:00.000Z", "videoUrl": "https://example.com/a.mp4"},
+        {"shortCode": "EPOCH", "takenAtTimestamp": 1792440000, "videoUrl": "https://example.com/b.mp4"},
+        {"shortCode": "NAIVE", "timestamp": "2026-10-19T20:00:00", "videoUrl": "https://example.com/c.mp4"},
+        {"shortCode": "MISSING", "videoUrl": "https://example.com/d.mp4"},
+    ]
+    posts = normalize_apify_posts(rows, limit=10)
+    assert posts[0].published_at == datetime(2026, 10, 19, 20, tzinfo=timezone.utc)
+    assert posts[1].published_at is not None
+    assert posts[1].published_at.tzinfo == timezone.utc
+    assert posts[2].published_at is None
+    assert posts[3].published_at is None
+
+
+def test_apify_details_without_timestamp_preserves_post_date(monkeypatch):
+    class FakeResponse:
+        status_code = 200
+        headers = {}
+
+        def __init__(self, items):
+            self.items = items
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self.items
+
+    def fake_post(url, params, json, timeout):
+        if json["resultsType"] == "posts":
+            return FakeResponse([{
+                "shortCode": "DUP", "timestamp": "2026-10-19T20:00:00Z",
+                "displayUrl": "https://example.com/low.jpg",
+            }])
+        if json["resultsType"] == "reels":
+            return FakeResponse([])
+        return FakeResponse([{"latestPosts": [{
+            "shortCode": "DUP", "displayUrl": "https://example.com/high.jpg",
+        }]}])
+
+    monkeypatch.setattr("insta_tg_sync.apify_provider.requests.post", fake_post)
+    config = AppConfig(
+        telegram=TelegramConfig(backend="bot", bot_token="token"),
+        accounts=[],
+        apify=ApifyConfig(token="token"),
+    )
+    posts = ApifyInstagramClient(config).fetch_posts(AccountConfig(username="account", telegram_chat_id="@chat"), 6)
+    assert posts[0].media_urls == ["https://example.com/high.jpg"]
+    assert posts[0].published_at == datetime(2026, 10, 19, 20, tzinfo=timezone.utc)
