@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.1.0 (2026-11-02)
+
+- Select the newest entries across both Posts and Reels; a full old-post feed can no longer hide a new Reel.
 
 - Deliver 11–20 image/video carousel items across multiple Telegram albums rather than silently dropping the extras; quarantine partial deliveries for manual review.
 
