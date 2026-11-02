@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.2.0 (2026-11-02)
 
 - Record Apify allowances before every actor attempt, including failures and retries, so interrupted checks cannot erase estimates.
 - Rotate bounded account batches instead of running all 20 profiles in a single time-limited job.
