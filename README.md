@@ -26,7 +26,7 @@
 | Automatic cross-posting | Checks a public Instagram profile approximately every 6 hours |
 | Media | Photos, videos / Reels and mixed carousels (up to 10 media items per Telegram album) |
 | Captions | Preserves the Instagram caption and adds the original post link |
-| No duplicates | Tracks posted items using hashed identifiers; rejects stale/undated content |
+| Duplicate protection | Tracks posted items using hashed identifiers; rejects stale/undated content |
 | No hosting | Scheduled workflow runs on GitHub Actions |
 | Privacy | Bot and Apify tokens are stored in GitHub Actions Secrets |
 | Safe setup | First-run baseline prevents a flood of old Instagram posts |
@@ -74,10 +74,10 @@ flowchart LR
     C --> D{New and recent?}
     D -->|Yes| E[Telegram Bot API]
     D -->|No| F[Skip]
-    C <--> G[(Private hashed state)]
+    C <--> G[(Hashed sync state)]
 ```
 
-The action fetches up to six recent items from the configured public profile, separately inspecting posts and Reels. It downloads eligible media and sends it to Telegram. State lives in a dedicated **`sync-state`** branch so automated state commits do not clutter the development history. The branch is created automatically on the first run.
+The action checks the public profile through separate posts, Reels and detail requests, then considers up to six distinct candidates per run. It downloads eligible media and sends it to Telegram. State lives in a dedicated **`sync-state`** branch so automated state commits do not clutter the development history. The branch is created automatically on the first run.
 
 The anti-duplicate logic rejects new candidates with missing timestamps, future timestamps or publication times older than **48 hours** by default. This guards against a known Apify partial-failure case in which old Reels were returned as new content. You can change the threshold with `apify.max_post_age_hours` in `config.example.yml` (1–168 hours).
 
@@ -137,6 +137,10 @@ Use GitHub Actions Secrets. Never commit tokens or sessions. See [SECURITY.md](S
 **Does it support multiple Instagram accounts?**
 
 The default workflow reads one Instagram username and destination from repository variables. The underlying configuration format supports multiple entries, but that requires a custom setup.
+
+## Related project
+
+Need **better Instagram link previews** in Telegram, Discord or Slack instead of automated channel reposting? See [InstaFix Revived](https://github.com/Bl0ck154/InstaFix-Revived). It's an independent project for rich previews.
 
 ## Support and contributing
 

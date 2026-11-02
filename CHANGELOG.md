@@ -1,15 +1,14 @@
 # Changelog
 
-## Unreleased
+## 1.0.0 (2026-11-02)
 
-- Added a dedicated `sync-state` branch for runtime progress rather than automated commits to `main`.
-- Expanded setup, cost guidance and contributor documentation.
-- Improved GitHub Actions CI triggers and onboarding.
+First documented public release.
 
-## 2026-11-02
+- Automatically repost new public Instagram photos, Reels and carousels to Telegram using GitHub Actions, Apify and the Telegram Bot API.
+- Keep the standard hosted setup lightweight with two runtime Python dependencies and four repository values.
+- Reject old, undated and future-dated posts to avoid unwanted Reels replays after partial Apify failures.
+- Store deduplication and Apify result counters in a dedicated `sync-state` branch. The initial production state was preserved before the migration.
+- Add clearer setup guidance, cost disclosures, public example artwork, contribution instructions and issue templates.
+- Run tests for relevant PR and main-branch code changes, avoiding state-only CI builds.
 
-- Reject stale, undated and future-dated Instagram items before sending them to Telegram.
-- Keep post publication timestamps during Apify results merging.
-- Add regression tests for an incident where old Reels were posted after a partial Apify failure.
-
-Before this project adopts formal versioned releases, dates identify significant changes.
+The default no-login mode is for public Instagram profiles; Apify has separate usage charges and the six-hour schedule is best-effort.
