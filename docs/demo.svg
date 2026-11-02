@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
+<title id="title">Instagram to Telegram automated repost illustration</title>
+<desc id="desc">An Instagram photo post with caption is transferred by a scheduled sync into a Telegram channel.</desc>
+<defs>
+<linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#0b1228"/><stop offset="1" stop-color="#141c37"/></linearGradient>
+<linearGradient id="pink" x1="0" x2="1" y1="1" y2="0"><stop stop-color="#fb7b63"/><stop offset=".5" stop-color="#db3c92"/><stop offset="1" stop-color="#8759ef"/></linearGradient>
+<linearGradient id="sea" x1="0" x2="1" y1="1" y2="0"><stop stop-color="#259cf0"/><stop offset="1" stop-color="#54d2ee"/></linearGradient>
+<filter id="shadow" x="-25%" y="-25%" width="160%" height="180%"><feDropShadow dx="0" dy="11" stdDeviation="14" flood-color="#000" flood-opacity=".3"/></filter>
+</defs>
+<rect width="1200" height="500" rx="28" fill="url(#bg)"/>
+<circle cx="110" cy="40" r="170" fill="#dc488e" opacity=".07"/>
+<circle cx="1140" cy="460" r="220" fill="#21b1f3" opacity=".07"/>
+<text x="55" y="54" fill="#c7d4f4" font-size="18" font-family="Arial, sans-serif" letter-spacing="2">INSTAGRAM → TELEGRAM</text>
+<text x="1125" y="54" fill="#8899bc" font-size="13" text-anchor="end" font-family="Arial, sans-serif">ILLUSTRATIVE OUTPUT</text>
+<g filter="url(#shadow)">
+<rect x="65" y="86" width="390" height="336" rx="20" fill="#fff"/>
+<rect x="65" y="86" width="390" height="64" rx="20" fill="#fff"/>
+<rect x="87" y="104" width="34" height="34" rx="11" fill="url(#pink)"/>
+<circle cx="104" cy="121" r="8" fill="none" stroke="#fff" stroke-width="2"/>
+<circle cx="114" cy="111" r="2" fill="#fff"/>
+<text x="136" y="126" fill="#26354f" font-size="19" font-weight="bold" font-family="Arial, sans-serif">@your_instagram</text>
+<rect x="80" y="158" width="360" height="183" rx="12" fill="#f0e2db"/>
+<circle cx="350" cy="198" r="33" fill="#f9bd7f"/>
+<path d="M80 305L180 214L260 285L317 232L440 339H80Z" fill="#71a993"/>
+<path d="M80 338L188 258L242 316L300 280L440 341H80Z" fill="#426e72"/>
+<text x="84" y="378" fill="#25354a" font-size="17" font-weight="bold" font-family="Arial, sans-serif">A new post, ready to share</text>
+<text x="84" y="401" fill="#79839c" font-size="14" font-family="Arial, sans-serif">Photo · Caption · Original URL</text>
+</g>
+<g>
+<rect x="478" y="207" width="235" height="82" rx="18" fill="#232f53" stroke="#4a587a" stroke-width="1.5"/>
+<text x="595" y="238" fill="#eaf3ff" text-anchor="middle" font-size="15" font-weight="bold" font-family="Arial, sans-serif">GitHub Actions</text>
+<text x="595" y="263" fill="#a5bae4" text-anchor="middle" font-size="14" font-family="Arial, sans-serif">Scheduled sync</text>
+<path d="M458 248H477M713 248H734" stroke="#67c8f8" stroke-width="3" stroke-linecap="round"/>
+<path d="M729 242L736 248L729 254" fill="none" stroke="#67c8f8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<g filter="url(#shadow)">
+<rect x="744" y="86" width="390" height="336" rx="20" fill="#fff"/>
+<rect x="744" y="86" width="390" height="64" rx="20" fill="#eef7fd"/>
+<circle cx="784" cy="118" r="20" fill="url(#sea)"/>
+<path d="M772 119L796 108L789 131L783 124L778 129L778 121Z" fill="#fff"/>
+<text x="817" y="126" fill="#173957" font-size="20" font-weight="bold" font-family="Arial, sans-serif">Your Telegram channel</text>
+<rect x="765" y="166" width="348" height="171" rx="12" fill="#d7ede6"/>
+<circle cx="1020" cy="201" r="31" fill="#f7ba7b"/>
+<path d="M765 307L868 229L930 284L990 233L1113 338H765Z" fill="#6ca894"/>
+<path d="M765 337L875 262L927 313L987 281L1113 339H765Z" fill="#406e71"/>
+<text x="768" y="372" fill="#25354a" font-size="17" font-weight="bold" font-family="Arial, sans-serif">A new post, ready to share</text>
+<text x="768" y="397" fill="#2d8dbc" font-size="14" font-family="Arial, sans-serif">instagram.com/p/example/</text>
+</g>
+<text x="600" y="463" fill="#9eacca" text-anchor="middle" font-family="Arial, sans-serif" font-size="16">Photos · Reels · Carousels · Duplicate protection</text>
+</svg>

@@ -1,0 +1,70 @@
+# Setup and troubleshooting
+
+This guide assumes you want to mirror new posts from one **public** Instagram profile to one Telegram channel.
+
+## Create a copy
+
+Use **Use this template** on the repository page, or fork the repository. In your copy, visit **Actions** and enable workflows if GitHub presents a disabled-workflow banner. Do not alter the scheduled job until the standard setup is working.
+
+## Create the bot and channel
+
+1. Start [@BotFather](https://t.me/BotFather) in Telegram and create a bot. Copy its token.
+2. Create a channel or use an existing channel you administer.
+3. Add the new bot as a channel administrator and grant posting permission.
+4. For public channels, use the `@channelname` value as `TELEGRAM_CHAT_ID`. For private channels, use the actual numeric chat ID.
+
+## Configure GitHub Actions
+
+Go to **Settings → Secrets and variables → Actions** in your *own* repository.
+
+Under **Variables**, add `INSTAGRAM_USERNAME` and `TELEGRAM_CHAT_ID`.
+
+Under **Secrets**, add `APIFY_TOKEN` from the Apify Console and `TELEGRAM_BOT_TOKEN` from BotFather. Never put either token in a variable or commit it to a file.
+
+Your GitHub repository needs GitHub Actions permission to write repository contents so the tool can save duplicate-protection state on a dedicated branch. The workflow declares `contents: write` for the sync job. If your organization restricts GitHub Actions permissions, ask its administrator to allow that job.
+
+## Run the setup once
+
+Open **Actions → Instagram to Telegram → Run workflow**.
+
+First run: enable `initialize_only`. This records existing posts in a `sync-state` branch without posting them.
+
+For a subsequent safe test, use `dry_run`. It fetches images/videos and checks processing logic without publishing anything.
+
+After the test, the normal scheduled run checks every six hours. Scheduled Actions workflows run on the repository's default branch and may be delayed by GitHub. You can always use **Run workflow** to start one manually.
+
+## Troubleshooting
+
+| Symptom | What to check |
+| --- | --- |
+| No workflow runs | Enable Actions in your fork/copy; confirm the YAML is on `main` |
+| Workflow is skipped | Check `INSTAGRAM_USERNAME` and `TELEGRAM_CHAT_ID` variables |
+| Telegram HTTP 400 | Chat ID and bot posting permission |
+| Telegram HTTP 403 | Bot membership and channel administrator rights |
+| Telegram HTTP 404 | Re-copy the BotFather token into Actions Secrets |
+| Apify 401 / 403 | Apify token, account status and actor access |
+| Apify quota reached | Check Apify billing usage and the configured local result cap |
+| No new content | First-run baseline, duplicate state and 48-hour freshness filter |
+| State API error | Ensure Actions can write repository contents; do not disable the `sync-state` branch |
+| Missing newer Reels | Check the Apify run output and timestamp fields; the system deliberately skips undated items |
+
+### Important recovery warning
+
+**Do not delete `sync-state` or reset its history** to troubleshoot missing posts. It records which Instagram posts were already processed and the local Apify usage counters. Removing it may make old content eligible again or reset a safety counter.
+
+If a scheduled run fails after posting some media, inspect the job log before rerunning it. If state persistence failed, a retry may duplicate a post.
+
+## Advanced backends and local testing
+
+For local-only backends:
+
+```bash
+python -m pip install -r requirements-advanced.txt
+python -m insta_tg_sync.cli --config config.example.yml --backend instaloader --dry-run
+```
+
+The default hosted workflow intentionally does not install Playwright, Instaloader, Telethon or `curl_cffi`. Advanced backends may need credentials, browser setup or proxy settings that are outside the standard four-value deployment.
+
+## Security
+
+Keep tokens in GitHub Actions Secrets. Redact usernames, chat IDs, access tokens, cookies and session files before attaching logs to issues. See [SECURITY.md](../SECURITY.md).

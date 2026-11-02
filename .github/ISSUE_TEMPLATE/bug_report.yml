@@ -1,0 +1,34 @@
+name: Bug report
+description: Report a reproducible problem without sharing private account data.
+title: "Bug: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: symptom
+    attributes:
+      label: What happened?
+      description: Explain what you expected and what occurred.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Include public settings and sanitized error messages.
+    validations:
+      required: true
+  - type: dropdown
+    id: backend
+    attributes:
+      label: Backend
+      options: [Apify (default), Instaloader, Playwright, curl_cffi, Other]
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs
+      description: Remove tokens, chat IDs, usernames, session data and private content.
+      render: text
+    validations:
+      required: false
