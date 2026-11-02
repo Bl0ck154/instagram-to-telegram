@@ -7,7 +7,6 @@ venv/
 # Runtime data and private credentials
 data/*
 !data/.gitkeep
-!data/state.json
 data/debug/
 data/browser-storage-state.json
 data/telegram.session
