@@ -33,6 +33,16 @@ For a subsequent safe test, use `dry_run`. It fetches images/videos and checks p
 
 After the test, the normal scheduled run checks every six hours. With more than four profiles, it checks a rotating batch each run. Scheduled Actions workflows run on the repository's default branch and may be delayed by GitHub. You can always use **Run workflow** to start one manually.
 
+## Scheduled checks and GitHub inactivity
+
+The template runs on GitHub Actions' native cron schedule in `.github/workflows/instagram-to-telegram.yml`, without an external cron service, VPS, or Instagram webhook. Its `17 */6 * * *` schedule means **00:17, 06:17, 12:17 and 18:17 UTC**. GitHub may delay or occasionally drop scheduled runs. The check runs regardless of whether the public Instagram profile has published new content. New Instagram posts do not trigger a workflow run.
+
+**Why is the original repository still running?** Its default `main` branch has recent development commits. In public repositories GitHub automatically disables scheduled workflows after **60 days without repository activity**. Instagram posts are unrelated to GitHub repository activity. GitHub's documentation does not guarantee that repeated scheduled checks or commits to our separate `sync-state` branch prevent inactivity disabling, so don't rely on either as a workaround.
+
+To check your copy, open **Actions → Instagram to Telegram** and inspect the recent runs. The event `schedule` identifies GitHub's built-in cron, while `workflow_dispatch` identifies a manually initiated run. If the workflow has been disabled, choose **Enable workflow** on its Actions page, then verify a future scheduled run. If no scheduled run appears, check GitHub's workflow status and permissions. The template does not configure an external scheduler.
+
+Official references: [Scheduled workflow events](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule) and [Enable or disable a workflow](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/disable-and-enable-workflows).
+
 ## Troubleshooting
 
 | Symptom | What to check |

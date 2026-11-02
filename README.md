@@ -81,6 +81,12 @@ flowchart LR
     C <--> G[(Hashed sync state)]
 ```
 
+### How scheduling works
+
+The standard deployment uses **GitHub Actions' built-in scheduler**. No external cron service, webhook, or continuously running server is needed. The workflow's `schedule` trigger (`17 */6 * * *`, UTC) checks for new posts every six hours, **even when nothing new has appeared on Instagram**. You can also run a check manually via **Actions → Instagram to Telegram → Run workflow**. Scheduled starts are best-effort and can be delayed or missed.
+
+**Public-repository inactivity:** GitHub can automatically disable scheduled workflows after **60 days without repository activity**. Posts on the monitored Instagram account are not GitHub repository activity. This repository currently has recent development commits to `main`, but copied projects may not. Do not assume scheduled checks or automated commits to the separate `sync-state` branch will keep the schedule alive. If it stops, open **Actions** in your copy and re-enable the workflow. See the [setup guide](docs/SETUP.md#scheduled-checks-and-github-inactivity).
+
 The action checks posts and Reels separately; it requests the additional details fallback only when a feed is missing or media appears low resolution. It considers up to six distinct candidates per run. It downloads eligible media and sends it to Telegram. State lives in a dedicated **`sync-state`** branch so automated state commits do not clutter the development history. The branch is created automatically on the first run.
 
 The anti-duplicate logic rejects new candidates with missing timestamps, future timestamps or publication times older than **48 hours** by default. This guards against a known Apify partial-failure case in which old Reels were returned as new content. You can change the threshold with `apify.max_post_age_hours` in `config.example.yml` (1–168 hours).

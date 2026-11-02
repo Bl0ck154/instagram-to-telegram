@@ -85,6 +85,7 @@ ol{padding-left:23px}li{margin-bottom:7px}
 <li>Run once with <code>dry_run=true</code> to test without publishing. New content will then be checked about every six hours.</li>
 <li>Optional: set variable <code>ALERT_CHAT_ID</code> to a Telegram chat that should receive alerts after two consecutive failed syncs.</li>
 </ol>
+<p class="hint">Scheduling uses GitHub Actions' built-in cron, not an external cron service. It checks on a timer even if Instagram has no new posts. Public repositories can have scheduled workflows disabled after 60 days without repository activity; Instagram posts and scheduled checks should not be relied on to prevent this. Re-enable it in your repository's Actions tab if it stops. <a href="https://github.com/Bl0ck154/instagram-to-telegram/blob/main/docs/SETUP.md#scheduled-checks-and-github-inactivity">Scheduling details</a>.</p>
 <p class="hint">The wizard never asks you to paste a token or stores your entered accounts on a server. Apify has separate usage charges; check its pricing before enabling your workflow.</p>
 <div class="row"><a class="button primary" href="https://github.com/Bl0ck154/instagram-to-telegram/blob/main/docs/SETUP.md">Detailed setup guide</a><a class="button" href="https://github.com/Bl0ck154/instagram-to-telegram/actions/runs/41366488814">Verified dry-run log</a></div>
 </section>
