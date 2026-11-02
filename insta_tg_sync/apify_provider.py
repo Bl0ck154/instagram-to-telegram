@@ -38,6 +38,9 @@ class ApifyInstagramClient:
         self.config = config
         self._last_type_counts: dict[str, int] = {}
         self.requested_results = 0
+        # Callback receives the requested-results allowance before every
+        # outbound actor attempt, including retries and failed requests.
+        self.usage_recorder = None
 
     def fetch_posts(self, account: AccountConfig, limit: int) -> list[ApifyPost]:
         posts: list[ApifyPost] = []
@@ -82,7 +85,6 @@ class ApifyInstagramClient:
             },
             results_type,
         )
-        self.requested_results += limit
         return response.json()
 
     def _fetch_posts(self, account: AccountConfig, limit: int, results_type: str, normalize_limit: int | None = None) -> list[ApifyPost]:
@@ -93,6 +95,12 @@ class ApifyInstagramClient:
 
     def _post_with_retry(self, url: str, payload: dict, results_type: str) -> requests.Response:
         for attempt in range(1, self.MAX_ATTEMPTS + 1):
+            allowance = int(payload["resultsLimit"])
+            if self.usage_recorder is not None:
+                # Reserve and durably persist before making the request:
+                # a failing later feed or retry cannot erase this estimate.
+                self.usage_recorder(allowance)
+            self.requested_results += allowance
             response = requests.post(
                 url,
                 params={"token": self.config.apify.token, "timeout": self.config.apify.timeout_seconds},

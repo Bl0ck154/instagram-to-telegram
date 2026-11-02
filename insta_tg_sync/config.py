@@ -69,6 +69,7 @@ class AppConfig:
     dry_run: bool = False
     initialize_only: bool = False
     alert_chat_id: str = ""
+    max_accounts_per_run: int = 4
 
 
 DEFAULT_USER_AGENTS = [
@@ -126,6 +127,10 @@ def parse_config(raw: dict[str, Any]) -> AppConfig:
     if backend not in {"instaloader", "browser", "curl_cffi", "apify", "auto"}:
         raise ValueError("settings.backend must be one of: instaloader, browser, curl_cffi, apify, auto.")
 
+    batch_size = int(os.environ.get("MAX_ACCOUNTS_PER_RUN") or settings.get("max_accounts_per_run", 4))
+    if not 1 <= batch_size <= 20:
+        raise ValueError("max_accounts_per_run must be between 1 and 20.")
+
     return AppConfig(
         telegram=telegram_config,
         accounts=accounts,
@@ -152,6 +157,7 @@ def parse_config(raw: dict[str, Any]) -> AppConfig:
         dry_run=bool(settings.get("dry_run", False)),
         initialize_only=bool(settings.get("initialize_only", False)),
         alert_chat_id=os.environ.get("ALERT_CHAT_ID", "").strip(),
+        max_accounts_per_run=batch_size,
     )
 
 
