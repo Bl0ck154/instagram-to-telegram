@@ -31,8 +31,8 @@
   "health": {},
   "stats": {
     "2026-11-02": {
-      "checks": 2,
-      "estimated_apify_results": 24,
+      "checks": 3,
+      "estimated_apify_results": 30,
       "fetched": 12,
       "skipped": 0
     }
@@ -48,7 +48,7 @@
       "apify": 1443
     },
     "2026-10-26": {
-      "apify": 388
+      "apify": 394
     }
   }
 }
