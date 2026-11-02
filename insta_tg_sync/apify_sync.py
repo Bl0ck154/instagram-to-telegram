@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import os
 from datetime import datetime, timedelta, timezone
 import time
 from pathlib import Path
@@ -33,7 +34,17 @@ class ApifySyncRunner:
     def run(self) -> None:
         self.state.load()
         errors: list[Exception] = []
-        for account in self.config.accounts:
+        # Sequential bounded batches preserve shared quota and sync-state
+        # correctness. At 20 accounts and batch size 4, expect each account
+        # roughly once per 30 hours, not once per six-hour workflow run.
+        selected = self.state.next_account_batch(
+            self.config.accounts, self.config.max_accounts_per_run, advance=False,
+        )
+        started = time.monotonic()
+        for account in selected:
+            if time.monotonic() - started > 2400:
+                print("Safety time budget reached; remaining accounts will be checked next scheduled run.")
+                break
             try:
                 self._sync_account(account)
             except Exception as error:
@@ -41,30 +52,55 @@ class ApifySyncRunner:
                 errors.append(error)
                 print(f"Account sync failed for @{account.username}: {type(error).__name__}")
             finally:
+                if not self.config.dry_run:
+                    current = int(self.state.data.setdefault("health", {}).get("next_account_index", 0))
+                    self.state.data["health"]["next_account_index"] = (
+                        current + 1
+                    ) % len(self.config.accounts)
                 self.state.save()
+
         if errors and not (self.config.dry_run or self.config.initialize_only):
             failures = self.state.increment_failure()
             self.state.save()
-            if failures >= 2 and self.config.alert_chat_id:
-                self._send_failure_alert(failures, len(errors))
+            if (failures >= 2 and self.config.alert_chat_id
+                    and self.state.failure_alert_due()):
+                if self._send_alert(
+                    f"Instagram to Telegram: {len(errors)} account sync(s) failed. "
+                    f"Consecutive failed runs: {failures}. Check GitHub Actions."
+                ):
+                    self.state.mark_failure_alert_sent()
+                    self.state.save()
         elif not errors and not (self.config.dry_run or self.config.initialize_only):
+            was_alerted = self.state.had_failure_alert()
+            if was_alerted and self.config.alert_chat_id:
+                if self._send_alert("Instagram to Telegram: sync recovered; no account errors in this run."):
+                    self.state.clear_failure_alert()
+            elif was_alerted:
+                self.state.clear_failure_alert()
             self.state.reset_failures()
             self.state.save()
         if errors:
             raise RuntimeError(f"Sync failed for {len(errors)} account(s); see job logs.") from errors[0]
 
-    def _send_failure_alert(self, failures: int, accounts_failed: int) -> None:
+    def _send_alert(self, message: str) -> bool:
         try:
             from .telegram import TelegramBot
             bot = TelegramBot(self.config.telegram.bot_token)
             bot._post(f"{bot.base_url}/sendMessage", data={
-                "chat_id": self.config.alert_chat_id,
-                "text": f"Instagram to Telegram: {accounts_failed} account sync(s) failed. "
-                        f"Consecutive failed runs: {failures}. Check GitHub Actions."
+                "chat_id": self.config.alert_chat_id, "text": message,
             })
-            print("Failure alert sent.")
+            print("Sync status alert sent.")
+            return True
         except Exception:
-            print("Could not send failure alert; check Actions logs.")
+            print("Could not send status alert; check Actions logs.")
+            return False
+
+    def _send_failure_alert(self, failures: int, accounts_failed: int) -> None:
+        # Compatibility shim for integrations that call this directly.
+        self._send_alert(
+            f"Instagram to Telegram: {accounts_failed} account sync(s) failed. "
+            f"Consecutive failed runs: {failures}. Check GitHub Actions."
+        )
 
     def diagnose_apify_shortcode(self, shortcode: str) -> None:
         for account in self.config.accounts:
@@ -172,18 +208,52 @@ class ApifySyncRunner:
         charged_results = requested * request_multiplier + details_request
 
         client = ApifyInstagramClient(self.config)
+        client.usage_recorder = self._reserve_apify_attempt
+        used_before = self.state.external_results_used(
+            "apify", self.config.apify.billing_cycle_start_day
+        )
         posts = client.fetch_posts(account, requested)
         print(f"Apify backend extracted {len(posts)} post(s) for @{account.username}.")
 
-        charged_results = getattr(client, "requested_results", charged_results)
-        self.state.add_external_results("apify", charged_results, self.config.apify.billing_cycle_start_day)
-        self.state.record_stat("estimated_apify_results", charged_results)
+        # Compatibility for alternate Apify clients that have no per-attempt
+        # callback; normal client has already saved each reservation.
+        recorded = self.state.external_results_used(
+            "apify", self.config.apify.billing_cycle_start_day
+        ) - used_before
+        if recorded == 0:
+            estimated = getattr(client, "requested_results", charged_results)
+            self._reserve_apify_attempt(estimated)
         self.state.record_stat("fetched", len(posts))
         self.state.save()
 
         if not posts:
             raise RuntimeError(f"Apify backend found no posts for @{account.username}.")
         self._sync_posts(account, posts)
+
+    def _reserve_apify_attempt(self, requested: int) -> None:
+        """Conservative quota reservation before every Apify actor attempt."""
+        period = self.config.apify.billing_cycle_start_day
+        used = self.state.external_results_used("apify", period)
+        if used + requested > self.config.apify.monthly_result_cap:
+            raise RuntimeError(
+                f"Local Apify result allowance exhausted ({used}/"
+                f"{self.config.apify.monthly_result_cap}); actor call not sent."
+            )
+        self.state.add_external_results("apify", requested, period)
+        self.state.record_stat("estimated_apify_results", requested)
+        self.state.save()
+        # Hosted Actions saves quota reservations before actor calls.
+        # This survives worker failures between attempts.
+        if os.environ.get("APIFY_CHECKPOINT_REMOTE") == "true":
+            from .github_state import GitHubState
+            checkpoint = GitHubState(
+                os.environ.get("GITHUB_REPOSITORY", ""),
+                os.environ.get("GITHUB_TOKEN", ""),
+                os.environ.get("GITHUB_SHA", ""),
+                os.environ.get("GITHUB_API_URL", "https://api.github.com"),
+                state_path=self.state.path,
+            )
+            checkpoint.persist()
 
     def _sync_posts(self, account: AccountConfig, posts: list[ApifyPost]) -> None:
         if self.config.initialize_only:

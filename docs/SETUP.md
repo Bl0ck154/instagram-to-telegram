@@ -31,7 +31,7 @@ First run: enable `initialize_only`. This records existing posts in a `sync-stat
 
 For a subsequent safe test, use `dry_run`. It fetches images/videos and checks processing logic without publishing anything.
 
-After the test, the normal scheduled run checks every six hours. Scheduled Actions workflows run on the repository's default branch and may be delayed by GitHub. You can always use **Run workflow** to start one manually.
+After the test, the normal scheduled run checks every six hours. With more than four profiles, it checks a rotating batch each run. Scheduled Actions workflows run on the repository's default branch and may be delayed by GitHub. You can always use **Run workflow** to start one manually.
 
 ## Troubleshooting
 
@@ -57,6 +57,23 @@ After the test, the normal scheduled run checks every six hours. Scheduled Actio
 If Telegram times out, loses the connection or returns HTTP 5xx, the post is quarantined in `sync-state` instead of blindly retried. Check the channel before manually resolving that entry. If GitHub state persistence fails after a confirmed post, a later retry could still duplicate it.
 
 The **Usage and delivery summary** step reports aggregate checks, posted items, failures, estimated Apify requested results and uncertain deliveries. It does **not** measure actual Apify-billed results. Media captions longer than 1024 characters are sent in extra text messages. Files above Telegram's upload limits are rejected before sending.
+
+### Operator recovery: uncertain delivery and prolonged downtime
+
+When Telegram may have accepted a request but its response was lost, find the Instagram shortcode in GitHub Actions logs and check the destination channel:
+
+1. Open **Actions → Instagram to Telegram → Run workflow**.
+2. Set **resolve_action** to `delivered` if the post arrived, or `retry` if you confirmed it did not.
+3. Enter **resolve_username** and **resolve_shortcode**. The resolution job does **not** publish to Telegram. It persists only the corrected duplicate-protection state.
+4. For `retry`, first run `dry_run=true`. If the post is older than the normal 48-hour freshness window, set manual **catch_up_hours** between 48 and 168 with dry-run enabled to preview the candidates; then run a reviewed live sync if appropriate.
+
+Manual catch-up cannot restore posts already marked processed as stale. Scheduled runs always keep the default 48-hour freshness limit.
+
+For larger configurations, four profiles per scheduled run is the default. Twenty accounts are checked roughly once per 30 hours if scheduled runs continue normally. A batch may end earlier when it approaches its execution-time safety budget. The next run resumes from the saved cursor, with no concurrent writers to the shared state branch.
+
+**Scheduled workflow inactivity:** GitHub documents automatic disabling of schedules in public repositories after 60 days without repository activity. It does not guarantee that separate `sync-state` branch commits prevent this. Check the copied repository's Actions tab and re-enable the workflow if needed.
+
+**Apify estimates:** Requested-results allowances are now recorded before each actor attempt (including retries and failures). They are deliberately conservative and are **not** the vendor's actual invoice. Check the Apify dashboard for billed usage.
 
 ## Advanced backends and local testing
 

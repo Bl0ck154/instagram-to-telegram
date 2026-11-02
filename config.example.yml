@@ -28,4 +28,6 @@ settings:
   temp_dir: data/tmp
   request_timeout: 25
   post_delay_seconds: 4
+  # Bounded rotating batch. For 20 profiles, batch=4 means ~30h between checks.
+  max_accounts_per_run: 4
   dry_run: false

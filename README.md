@@ -31,7 +31,7 @@
 | Privacy | Bot and Apify tokens are stored in GitHub Actions Secrets |
 | Safe setup | First-run baseline prevents a flood of old Instagram posts |
 | Multiple accounts | Up to 20 public Instagram profiles, each mapped to a Telegram destination |
-| Reporting | Run summaries: checks, published items, failures, estimated Apify results |
+| Reporting | Run summaries: checks, published items, failures, conservative per-attempt Apify allowances |
 | Flexible | Optional advanced backends for local use, separate from lightweight default |
 
 The default workflow uses **Apify Instagram Scraper** and the **Telegram Bot API**. Apify is an external service that may charge for usage; read [Costs and limits](#costs-and-limits).
@@ -88,7 +88,7 @@ The anti-duplicate logic rejects new candidates with missing timestamps, future 
 ## Costs and limits
 
 - **Apify usage is separate from GitHub Actions.** Check the [Apify Instagram Scraper pricing](https://apify.com/apify/instagram-scraper) and your account's current free credits before you run the workflow.
-- The default configuration caps locally estimated Apify *results* at **1,800 per billing cycle** starting on day **26**. This is a safety guard, **not an invoice calculator or a guaranteed spending limit**. Actor runs may have different billable usage.
+- The default configuration reserves a conservative allowance for **every Apify request attempt and retry**, capped at **1,800 requested results per billing cycle** starting on day **26**. This is a safety guard, **not an invoice calculator or a guaranteed spending limit**. Actor runs may have different billable usage.
 - Each check uses posts and Reels requests; details requests are a conditional fallback. More frequent schedules and additional accounts may use more Apify credits.
 - GitHub Actions and Telegram Bot API have their own platform limits. Large files and album sizes may exceed Telegram's restrictions.
 - The default setup monitors **one public Instagram account**. The optional `ACCOUNTS_JSON` variable supports up to 20 distinct public accounts, each with its own destination. Stories and private accounts are unsupported.
@@ -115,6 +115,14 @@ Once the four environment variables are set:
 python -m insta_tg_sync.cli --config config.example.yml --validate
 python -m insta_tg_sync.cli --config config.example.yml --dry-run
 ```
+
+## Recovering from failures
+
+For an extended outage, use **Run workflow → catch_up_hours** (48–168). Start with `dry_run=true` and verify which older posts would be sent before any real run. This does not bypass the candidate limit or undo entries already marked processed.
+
+If Telegram delivery is uncertain, check your channel first. Then use **Run workflow → resolve_action** and choose `delivered` (mark processed) or `retry` (remove quarantine, no immediate post). Provide the Instagram username and shortcode from the original run log.
+
+GitHub may disable scheduled workflows in public repositories with no activity for **60 days**. We do not assume sync-state commits reset that clock. Check your copied repository's Actions tab and re-enable the workflow when needed.
 
 ## FAQ
 

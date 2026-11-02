@@ -213,13 +213,14 @@ def test_failure_alerts_after_second_real_failure(tmp_path, monkeypatch):
     def fail(account):
         raise RuntimeError("simulated fetch failure")
     monkeypatch.setattr(runner, "_sync_account", fail)
-    monkeypatch.setattr(runner, "_send_failure_alert", lambda failures, failed: calls.append((failures, failed)))
+    monkeypatch.setattr(runner, "_send_alert", lambda message: calls.append(message) or True)
     with pytest.raises(RuntimeError):
         runner.run()
     assert calls == []
     with pytest.raises(RuntimeError):
         runner.run()
-    assert calls == [(2, 1)]
+    assert len(calls) == 1
+    assert "Consecutive failed runs: 2" in calls[0]
     assert runner.state.data["health"]["consecutive_failures"] == 2
 
 

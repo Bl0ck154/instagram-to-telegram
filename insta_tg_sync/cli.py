@@ -19,6 +19,10 @@ def main() -> None:
     parser.add_argument("--initialize-only", action="store_true", help="Mark fetched posts as processed without sending to Telegram.")
     parser.add_argument("--diagnose-shortcode", help="Fetch and download one Apify post for media diagnostics without Telegram sending.")
     parser.add_argument("--validate", action="store_true", help="Validate config and exit without contacting Instagram.")
+    parser.add_argument(
+        "--catch-up-hours", type=int,
+        help="Manual-only catch-up window, 48-168 hours; dry-run first to review old posts.",
+    )
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -30,6 +34,11 @@ def main() -> None:
         config = replace(config, dry_run=True)
     if args.initialize_only:
         config = replace(config, initialize_only=True)
+    if args.catch_up_hours is not None:
+        if config.backend != "apify" or not 48 <= args.catch_up_hours <= 168:
+            parser.error("--catch-up-hours requires Apify and a value between 48 and 168.")
+        config = replace(config, apify=replace(config.apify, max_post_age_hours=args.catch_up_hours))
+        print(f"Manual catch-up window: {args.catch_up_hours} hours (no automatic replay of older posts).")
     if args.validate:
         print(f"Config OK: {len(config.accounts)} enabled account(s), backend={config.backend}.")
         return

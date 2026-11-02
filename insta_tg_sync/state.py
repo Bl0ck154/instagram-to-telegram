@@ -74,6 +74,50 @@ class StateStore:
         record = self._account(username)
         record.setdefault("uncertain", {})[_private_id("post", shortcode, self._key)] = _now_utc().isoformat()
 
+    def resolve_uncertain(self, username: str, shortcode: str, *, delivered: bool) -> bool:
+        """Only the operator may resolve a questionable delivery after checking Telegram."""
+        record = self._account(username)
+        key = _private_id("post", shortcode, self._key)
+        if key not in record.get("uncertain", {}):
+            return False
+        if delivered:
+            self.mark_processed(username, shortcode)
+        del record["uncertain"][key]
+        return True
+
+    def next_account_batch(self, accounts: list, batch_size: int, *, advance: bool = True) -> list:
+        """Rotate checks fairly across large configurations without parallel state writes."""
+        if not accounts:
+            return []
+        size = max(1, min(batch_size, len(accounts)))
+        health = self.data.setdefault("health", {})
+        offset = int(health.get("next_account_index", 0)) % len(accounts)
+        selected = [accounts[(offset + n) % len(accounts)] for n in range(size)]
+        if advance:
+            health["next_account_index"] = (offset + size) % len(accounts)
+        return selected
+
+    def failure_alert_due(self, *, now: datetime | None = None, cooldown_hours: int = 24) -> bool:
+        now = now or _now_utc()
+        health = self.data.setdefault("health", {})
+        raw = health.get("failure_alert_at")
+        if not raw:
+            return True
+        try:
+            from datetime import timedelta
+            return now - datetime.fromisoformat(raw) >= timedelta(hours=cooldown_hours)
+        except (ValueError, TypeError):
+            return True
+
+    def mark_failure_alert_sent(self) -> None:
+        self.data.setdefault("health", {})["failure_alert_at"] = _now_utc().isoformat()
+
+    def had_failure_alert(self) -> bool:
+        return bool(self.data.setdefault("health", {}).get("failure_alert_at"))
+
+    def clear_failure_alert(self) -> None:
+        self.data.setdefault("health", {}).pop("failure_alert_at", None)
+
     def record_stat(self, metric: str, amount: int = 1) -> None:
         allowed = {"checks", "fetched", "published", "skipped", "dry_runs", "errors", "estimated_apify_results", "uncertain"}
         if metric not in allowed:

@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Record Apify allowances before every actor attempt, including failures and retries, so interrupted checks cannot erase estimates.
+- Rotate bounded account batches instead of running all 20 profiles in a single time-limited job.
+- Add manual catch-up windows and an operator-only workflow for resolving uncertain Telegram deliveries.
+- Rate-limit failure notifications and send recovery notices.
+- Improve setup-site social previews, canonical metadata, sitemap and favicon.
+- Document GitHub's 60-day scheduled workflow inactivity rule and recovery steps.
+
 ## 1.1.0 (2026-11-02)
 
 - Select the newest entries across both Posts and Reels; a full old-post feed can no longer hide a new Reel.
