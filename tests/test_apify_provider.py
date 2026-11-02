@@ -346,3 +346,29 @@ def test_apify_details_without_timestamp_preserves_post_date(monkeypatch):
     posts = ApifyInstagramClient(config).fetch_posts(AccountConfig(username="account", telegram_chat_id="@chat"), 6)
     assert posts[0].media_urls == ["https://example.com/high.jpg"]
     assert posts[0].published_at == datetime(2026, 10, 19, 20, tzinfo=timezone.utc)
+
+def test_new_reels_are_not_hidden_by_full_older_posts_feed(monkeypatch):
+    from datetime import timedelta
+    from insta_tg_sync.apify_provider import ApifyPost
+    now = datetime.now(timezone.utc)
+    posts = [ApifyPost(
+        shortcode=f"OLD{i}", url=f"https://www.instagram.com/p/OLD{i}/",
+        caption="", media_urls=["https://example.com/old.jpg"],
+        published_at=now - timedelta(hours=i+10)
+    ) for i in range(6)]
+    fresh_reel = ApifyPost(
+        shortcode="NEWREEL", url="https://www.instagram.com/reel/NEWREEL/",
+        caption="", media_urls=["https://example.com/new.mp4"],
+        published_at=now - timedelta(minutes=20)
+    )
+    def fetch(self, account, limit, results_type, normalize_limit=None):
+        return posts if results_type == "posts" else [fresh_reel] if results_type == "reels" else []
+    monkeypatch.setattr(ApifyInstagramClient, "_fetch_posts", fetch)
+    config = AppConfig(telegram=TelegramConfig(bot_token="token"), accounts=[],
+                       apify=ApifyConfig(token="token"))
+    result = ApifyInstagramClient(config).fetch_posts(
+        AccountConfig(username="account", telegram_chat_id="@channel"), 6
+    )
+    assert result[0].shortcode == "NEWREEL"
+    assert len(result) == 6
+    assert "OLD5" not in [post.shortcode for post in result]

@@ -56,7 +56,14 @@ class ApifyInstagramClient:
         ) or any(_small_media_candidate(post) for post in posts)
         if needs_details:
             posts.extend(self._fetch_posts(account, self.DETAILS_RESULTS_LIMIT, "details", normalize_limit=limit))
-        return _dedupe_posts(posts, prefer_later=True)[:limit]
+        unique = _dedupe_posts(posts, prefer_later=True)
+        # A full posts feed must not crowd out newer Reels. Combine both
+        # feeds first and choose the newest publication timestamps.
+        return sorted(
+            unique,
+            key=lambda post: post.published_at or datetime.min.replace(tzinfo=timezone.utc),
+            reverse=True,
+        )[:limit]
 
     def fetch_raw_items(self, account: AccountConfig, limit: int, results_type: str) -> list[dict]:
         if not self.config.apify.token:
