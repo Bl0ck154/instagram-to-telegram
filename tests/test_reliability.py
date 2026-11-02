@@ -221,3 +221,40 @@ def test_failure_alerts_after_second_real_failure(tmp_path, monkeypatch):
         runner.run()
     assert calls == [(2, 1)]
     assert runner.state.data["health"]["consecutive_failures"] == 2
+
+
+def test_carousel_of_twelve_media_is_sent_in_two_albums(tmp_path):
+    bot = TelegramBot("test:token")
+    calls = []
+    bot._post = lambda url, **params: calls.append((url, params))
+    media = photo(tmp_path)
+    bot.send_media("@channel", "caption", [media] * 12)
+    assert len(calls) == 2
+    assert calls[0][0].endswith("/sendMediaGroup")
+    assert calls[1][0].endswith("/sendMediaGroup")
+    import json
+    first = json.loads(calls[0][1]["data"]["media"])
+    second = json.loads(calls[1][1]["data"]["media"])
+    assert len(first) == 10 and len(second) == 2
+    assert first[0]["caption"] == "caption"
+    assert all("caption" not in item for item in second)
+
+
+def test_partial_carousel_delivery_is_quarantined(tmp_path):
+    bot = TelegramBot("test:token")
+    requests = []
+    def send(url, **params):
+        requests.append(url)
+        if len(requests) == 2:
+            raise RuntimeError("Second album rejected")
+    bot._post = send
+    with pytest.raises(TelegramDeliveryUncertain, match="Some media batches"):
+        bot.send_media("@channel", "caption", [photo(tmp_path)] * 12)
+
+
+def test_apify_does_not_truncate_twenty_item_carousel():
+    from insta_tg_sync.apify_provider import normalize_apify_posts
+    children = [{"displayUrl": f"https://example.com/media-{n}.jpg"} for n in range(20)]
+    posts = normalize_apify_posts([{"shortCode": "ALLTWENTY", "childPosts": children}], limit=1)
+    assert len(posts) == 1
+    assert len(posts[0].media_urls) == 20

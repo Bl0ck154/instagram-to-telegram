@@ -56,8 +56,8 @@ class TelegramBot(TelegramSender):
         self.timeout = timeout
 
     def send_media(self, chat_id: str, caption: str, files: list[Path]) -> None:
-        if not files or len(files) > 10:
-            raise ValueError("Telegram requires 1–10 media items; refusing to silently drop content.")
+        if not files or len(files) > 20:
+            raise ValueError("Instagram post must have 1–20 supported media items; refusing truncation.")
         media_files = list(files)
         for file_path in media_files:
             if file_path.suffix.lower() not in {".jpg", ".jpeg", ".png", ".mp4"}:
@@ -72,10 +72,22 @@ class TelegramBot(TelegramSender):
         # The Bot API caps media captions at 1024, and sendMessage at 4096.
         # Preserve full text by sending long captions in follow-up messages.
         inline_caption = caption if len(caption) <= 1024 else ""
-        if len(media_files) == 1:
-            self._send_single(chat_id, inline_caption, media_files[0])
-        else:
-            self._send_group(chat_id, inline_caption, media_files)
+        completed_batches = 0
+        try:
+            for offset in range(0, len(media_files), 10):
+                batch = media_files[offset:offset + 10]
+                batch_caption = inline_caption if offset == 0 else ""
+                if len(batch) == 1:
+                    self._send_single(chat_id, batch_caption, batch[0])
+                else:
+                    self._send_group(chat_id, batch_caption, batch)
+                completed_batches += 1
+        except Exception as error:
+            if completed_batches:
+                raise TelegramDeliveryUncertain(
+                    "Some media batches were delivered; inspect the channel before retrying."
+                ) from error
+            raise
 
         if not inline_caption and caption:
             try:

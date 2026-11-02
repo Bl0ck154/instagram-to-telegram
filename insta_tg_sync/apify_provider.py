@@ -223,6 +223,8 @@ def _content_suffix(header: bytes, mime: str) -> str:
 def download_apify_media(post: ApifyPost, target_dir: Path, timeout: int, user_agent: str) -> list[Path]:
     target_dir.mkdir(parents=True, exist_ok=True)
     files: list[Path] = []
+    if len(post.media_urls) > 20:
+        raise ValueError("Instagram carousel has more than 20 media items; refusing to silently drop any.")
     for index, url in enumerate(post.media_urls, start=1):
         response, downloaded_url = _download_response(url, post.url, timeout, user_agent)
         destination: Path | None = None
@@ -321,7 +323,7 @@ def _media_urls(item: dict) -> list[str]:
     if not urls:
         urls.extend(_best_media_urls(item))
 
-    return list(dict.fromkeys(urls))[:10]
+    return list(dict.fromkeys(urls))
 
 
 def _carousel_media_urls(item: dict) -> list[str]:
