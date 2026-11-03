@@ -42,7 +42,7 @@
     "2026-11-03": {
       "checks": 2,
       "estimated_apify_results": 26,
-      "fetched": 6,
+      "fetched": 12,
       "skipped": 0
     }
   },
