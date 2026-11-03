@@ -40,8 +40,8 @@
       "skipped": 0
     },
     "2026-11-03": {
-      "checks": 1,
-      "estimated_apify_results": 13,
+      "checks": 2,
+      "estimated_apify_results": 19,
       "fetched": 6,
       "skipped": 0
     }
@@ -57,7 +57,7 @@
       "apify": 1443
     },
     "2026-10-26": {
-      "apify": 413
+      "apify": 419
     }
   }
 }
