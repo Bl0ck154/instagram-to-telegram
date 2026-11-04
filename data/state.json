@@ -47,7 +47,9 @@
     },
     "2026-11-04": {
       "checks": 1,
-      "estimated_apify_results": 12
+      "estimated_apify_results": 12,
+      "fetched": 6,
+      "skipped": 0
     }
   },
   "usage": {
