@@ -29,7 +29,7 @@
     }
   },
   "health": {
-    "consecutive_failures": 6,
+    "consecutive_failures": 7,
     "next_account_index": 0
   },
   "stats": {
@@ -112,6 +112,7 @@
     },
     "2026-11-15": {
       "checks": 1,
+      "errors": 1,
       "estimated_apify_results": 6
     }
   },
