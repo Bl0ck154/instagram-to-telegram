@@ -133,7 +133,7 @@
     "2026-11-19": {
       "checks": 2,
       "errors": 1,
-      "estimated_apify_results": 12
+      "estimated_apify_results": 18
     }
   },
   "usage": {
@@ -147,7 +147,7 @@
       "apify": 1443
     },
     "2026-10-26": {
-      "apify": 762
+      "apify": 768
     }
   }
 }
