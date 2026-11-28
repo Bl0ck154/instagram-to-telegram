@@ -186,6 +186,10 @@
       "estimated_apify_results": 24,
       "fetched": 12,
       "skipped": 0
+    },
+    "2026-11-28": {
+      "checks": 1,
+      "estimated_apify_results": 6
     }
   },
   "usage": {
@@ -202,7 +206,7 @@
       "apify": 924
     },
     "2026-11-26": {
-      "apify": 48
+      "apify": 54
     }
   }
 }
